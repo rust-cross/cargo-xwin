@@ -71,11 +71,6 @@ jobs:
           cargo run --release xwinbuild --target aarch64-pc-windows-msvc --manifest-path tests/libhello/Cargo.toml
           cargo run --release xwinbuild --target aarch64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
           cargo run --release xwinbuild --target aarch64-pc-windows-msvc --manifest-path tests/hello-tls/Cargo.toml
-      - name: Windows - Test run
-        if: matrix.os == 'windows-latest'
-        run: |
-          ./tests/hello-windows/target/x86_64-pc-windows-msvc/debug/hello-windows.exe
-          ./tests/hello-tls/target/x86_64-pc-windows-msvc/debug/hello-tls.exe
 
   fmt:
     name: Rustfmt
