@@ -1,0 +1,22 @@
+[package]
+name = "cargo-xwinbuild"
+version = "0.1.0"
+edition = "2018"
+description = "Cross compile to Windows msvc target with ease"
+license = "MIT"
+keywords = ["windows", "cargo", "msvc"]
+readme = "README.md"
+repository = "https://github.com/messense/cargo-xwinbuild"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.53"
+clap = { version = "3.1.2", features = ["derive", "env", "wrap_help"] }
+dirs = "4.0.0"
+fs-err = "2.7.0"
+indicatif = "0.17.0-rc.5"
+xwin = "0.1.9"
+
+[patch.crates-io]
+indicatif = { path = "../indicatif" }
