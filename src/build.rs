@@ -308,8 +308,8 @@ impl Build {
             if target.contains("msvc") {
                 self.setup_msvc_crt(xwin_cache_dir.clone())?;
                 let env_target = target.to_uppercase().replace('-', "_");
-                build.env("TARGET_CC", "clang-cl");
-                build.env("TARGET_CXX", "clang-cl");
+                build.env("TARGET_CC", format!("clang-cl --target={}", target));
+                build.env("TARGET_CXX", format!("clang-cl --target={}", target));
                 build.env("TARGET_AR", "llvm-lib");
                 build.env(format!("CARGO_TARGET_{}_LINKER", env_target), "lld-link");
 
