@@ -5,7 +5,7 @@
 [![docs.rs](https://docs.rs/cargo-xwinbuild/badge.svg)](https://docs.rs/cargo-xwinbuild/)
 [![PyPI](https://img.shields.io/pypi/v/cargo-xwinbuild.svg)](https://pypi.org/project/cargo-xwinbuild)
 
-Cross compile Cargo project to Windows msvc target with ease
+Cross compile Cargo project to Windows msvc target with ease. (LLVM installation required.)
 
 ## Installation
 
@@ -20,6 +20,10 @@ pip install cargo-xwinbuild
 ```
 
 ## Usage
+
+1. Install [LLVM](https://llvm.org), on macOS: `brew install llvm`
+2. Install Rust Windows msvc target via rustup, for example, `rustup target add x86_64-pc-windows-msvc`
+3. Run `cargo xwinbuild`, for example, `cargo xwinbuild --target x86_64-pc-windows-msvc`
 
 ## License
 
