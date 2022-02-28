@@ -335,14 +335,12 @@ impl Build {
                 #[cfg(target_os = "macos")]
                 if let Ok(path) = env::var("PATH") {
                     let mut new_path = path.clone();
-                    if cfg!(target_arch = "x86_64") {
-                        if !path.contains("/usr/local/opt/llvm/bin") {
-                            new_path.push_str(":/usr/local/opt/llvm/bin");
-                        }
-                    } else if cfg!(target_arch = "aarch64") {
-                        if !path.contains("/opt/homebrew/opt/llvm/bin") {
-                            new_path.push_str(":/opt/homebrew/opt/llvm/bin");
-                        }
+                    if cfg!(target_arch = "x86_64") && !path.contains("/usr/local/opt/llvm/bin") {
+                        new_path.push_str(":/usr/local/opt/llvm/bin");
+                    } else if cfg!(target_arch = "aarch64")
+                        && !path.contains("/opt/homebrew/opt/llvm/bin")
+                    {
+                        new_path.push_str(":/opt/homebrew/opt/llvm/bin");
                     }
                     build.env("PATH", new_path);
                 }
@@ -372,11 +370,7 @@ impl Build {
         let op = xwin::Ops::Splat(xwin::SplatConfig {
             include_debug_libs: false,
             include_debug_symbols: false,
-            enable_symlinks: if cfg!(target_os = "macos") {
-                false
-            } else {
-                true
-            },
+            enable_symlinks: !cfg!(target_os = "macos"),
             preserve_ms_arch_notation: false,
             copy: false,
             output: cache_dir.try_into()?,
