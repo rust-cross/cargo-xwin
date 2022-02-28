@@ -2,7 +2,7 @@
 name = "cargo-xwinbuild"
 version = "0.1.0"
 edition = "2018"
-description = "Cross compile to Windows msvc target with ease"
+description = "Cross compile Cargo project to Windows msvc target with ease"
 license = "MIT"
 keywords = ["windows", "cargo", "msvc"]
 readme = "README.md"
@@ -19,4 +19,4 @@ indicatif = "0.17.0-rc.5"
 xwin = "0.1.9"
 
 [patch.crates-io]
-indicatif = { path = "../indicatif" }
+indicatif = { git = "https://github.com/console-rs/indicatif.git", branch = "main" }

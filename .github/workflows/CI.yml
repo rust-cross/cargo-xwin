@@ -1,0 +1,113 @@
+on: [push, pull_request]
+
+name: CI
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --all
+
+  test:
+    name: Test Suite
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        toolchain: [stable, nightly]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install GNU tar
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install gnu-tar
+          echo "/usr/local/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
+      - uses: actions-rs/toolchain@v1
+        id: rustup
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.toolchain }}
+          override: true
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v1
+      - name: Cache test crates cargo build
+        uses: actions/cache@v2
+        with:
+          path: |
+            tests/hello-tls/target
+            tests/hello-windows/target
+            tests/libhello/target
+          key: test-crates-${{ runner.os }}-${{ steps.rustup.outputs.rustc_hash }}-${{ hashFiles('tests/*/Cargo.lock') }}
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+      - name: Test - x86_64
+        run: |
+          rustup target add x86_64-pc-windows-msvc
+
+          cargo run --release xwinbuild --target x86_64-pc-windows-msvc --manifest-path tests/libhello/Cargo.toml
+          cargo run --release xwinbuild --target x86_64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
+          cargo run --release xwinbuild --target x86_64-pc-windows-msvc --manifest-path tests/hello-tls/Cargo.toml
+      - name: Test - aarch64
+        run: |
+          rustup target add aarch64-pc-windows-msvc
+
+          cargo run --release xwinbuild --target aarch64-pc-windows-msvc --manifest-path tests/libhello/Cargo.toml
+          cargo run --release xwinbuild --target aarch64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
+          cargo run --release xwinbuild --target aarch64-pc-windows-msvc --manifest-path tests/hello-tls/Cargo.toml
+      - name: Windows - Test run
+        if: matrix.os == 'windows-latest'
+        run: |
+          ./tests/hello-windows/target/x86_64-pc-windows-msvc/debug/hello-windows.exe
+          ./tests/hello-tls/target/x86_64-pc-windows-msvc/debug/hello-tls.exe
+
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+  clippy_check:
+    name: Clippy Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: clippy
+          override: true
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
+
+  spellcheck:
+    name: spellcheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: codespell-project/actions-codespell@master
