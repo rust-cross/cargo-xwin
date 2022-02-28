@@ -15,8 +15,5 @@ anyhow = "1.0.53"
 clap = { version = "3.1.2", features = ["derive", "env", "wrap_help"] }
 dirs = "4.0.0"
 fs-err = "2.7.0"
-indicatif = "0.17.0-rc.5"
+indicatif = "0.17.0-rc.6"
 xwin = "0.1.9"
-
-[patch.crates-io]
-indicatif = { git = "https://github.com/console-rs/indicatif.git", branch = "main" }
