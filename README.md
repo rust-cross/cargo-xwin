@@ -7,6 +7,8 @@
 
 Cross compile Cargo project to Windows msvc target with ease. (LLVM installation required.)
 
+**By using this software you are consented to accept the license at [https://go.microsoft.com/fwlink/?LinkId=2086102](https://go.microsoft.com/fwlink/?LinkId=2086102)**
+
 ## Installation
 
 ```bash
