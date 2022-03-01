@@ -451,7 +451,7 @@ impl Build {
                 ProgressBar::with_draw_target(0, draw_target.into()).with_prefix(prefix).with_style(
                     ProgressStyle::default_bar()
                         .template("{spinner:.green} {prefix:.bold} [{elapsed}] {wide_bar:.green} {bytes}/{total_bytes} {msg}").unwrap()
-                        .progress_chars("█▇▆▅▄▃▂▁  "),
+                        .progress_chars("=> "),
                 ),
             );
             xwin::WorkItem {
@@ -487,7 +487,7 @@ impl Build {
                 .template(
                     "{spinner:.green} {prefix:.bold} [{elapsed}] {wide_bar:.green} {bytes}/{total_bytes} {msg}",
                 )?
-                .progress_chars("█▇▆▅▄▃▂▁  "),
+                .progress_chars("=> "),
         );
         manifest_pb.set_prefix("Manifest");
         manifest_pb.set_message("📥 downloading");
