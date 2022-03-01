@@ -180,6 +180,21 @@ pub struct Build {
         hide = true,
     )]
     pub xwin_arch: Vec<xwin::Arch>,
+
+    #[clap(
+        long,
+        env = "XWIN_VARIANT",
+        possible_values(&["desktop", "onecore", /*"store",*/ "spectre"]),
+        use_value_delimiter = true,
+        default_value = "desktop",
+        hide = true,
+    )]
+    pub xwin_variant: Vec<xwin::Variant>,
+
+    /// The version to retrieve, can either be a major version of 15 or 16, or
+    /// a "<major>.<minor>" version.
+    #[clap(long, env = "XWIN_VERSION", default_value = "16", hide = true)]
+    pub xwin_version: String,
 }
 
 impl Build {
@@ -386,9 +401,10 @@ impl Build {
             .xwin_arch
             .iter()
             .fold(0, |acc, arch| acc | *arch as u32);
-        let variants = vec![xwin::Variant::Desktop]
-            .into_iter()
-            .fold(0, |acc, var| acc | var as u32);
+        let variants = self
+            .xwin_variant
+            .iter()
+            .fold(0, |acc, var| acc | *var as u32);
         let pruned = xwin::prune_pkg_list(&pkg_manifest, arches, variants)?;
         let op = xwin::Ops::Splat(xwin::SplatConfig {
             include_debug_libs: false,
@@ -475,7 +491,8 @@ impl Build {
         manifest_pb.set_prefix("Manifest");
         manifest_pb.set_message("📥 downloading");
 
-        let manifest = xwin::manifest::get_manifest(ctx, "16", "release", manifest_pb.clone())?;
+        let manifest =
+            xwin::manifest::get_manifest(ctx, &self.xwin_version, "release", manifest_pb.clone())?;
         let pkg_manifest =
             xwin::manifest::get_package_manifest(ctx, &manifest, manifest_pb.clone())?;
         manifest_pb.finish_with_message("📥 downloaded");
