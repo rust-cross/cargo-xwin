@@ -212,13 +212,17 @@ impl Build {
 
     /// Generate cargo subcommand
     pub fn build_command(&self, subcommand: &str) -> Result<Command> {
-        let xwin_cache_dir = self.xwin_cache_dir.clone().unwrap_or_else(|| {
-            dirs::cache_dir()
-                // If the really is no cache dir, cwd will also do
-                .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
-                .join(env!("CARGO_PKG_NAME"))
-                .join("xwin")
-        });
+        let xwin_cache_dir = self
+            .xwin_cache_dir
+            .clone()
+            .unwrap_or_else(|| {
+                dirs::cache_dir()
+                    // If the really is no cache dir, cwd will also do
+                    .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
+                    .join(env!("CARGO_PKG_NAME"))
+                    .join("xwin")
+            })
+            .canonicalize()?;
         fs::create_dir_all(&xwin_cache_dir)?;
 
         let mut build = Command::new("cargo");
