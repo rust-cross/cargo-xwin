@@ -1,6 +1,6 @@
 [package]
 name = "cargo-xwinbuild"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2018"
 description = "Cross compile Cargo project to Windows msvc target with ease"
 license = "MIT"
