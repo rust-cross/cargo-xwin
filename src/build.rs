@@ -356,7 +356,7 @@ impl Build {
                 build.env(format!("CARGO_TARGET_{}_LINKER", env_target), "lld-link");
 
                 let cl_flags = format!(
-                    "-Wno-unused-command-line-argument -fuse-ld=lld-link /imsvc{dir}/crt/include /imsvc{dir}/sdk/include/ucrt /imsvc{dir}/sdk/include/um /imsvc{dir}/sdk/include/shared",
+                    "-fuse-ld=lld-link /imsvc{dir}/crt/include /imsvc{dir}/sdk/include/ucrt /imsvc{dir}/sdk/include/um /imsvc{dir}/sdk/include/shared",
                     dir = xwin_cache_dir.display()
                 );
                 build.env("CL_FLAGS", &cl_flags);
