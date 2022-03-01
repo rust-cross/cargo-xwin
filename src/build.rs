@@ -367,10 +367,14 @@ impl Build {
                     .split_once('-')
                     .map(|(x, _)| x)
                     .context("invalid target triple")?;
+                let xwin_arch = match target_arch {
+                    "i586" | "i686" => "x86",
+                    _ => target_arch,
+                };
                 let rustflags = format!(
                     "-Lnative={dir}/crt/lib/{arch} -Lnative={dir}/sdk/lib/um/{arch} -Lnative={dir}/sdk/lib/ucrt/{arch}",
                     dir = xwin_cache_dir.display(),
-                    arch = target_arch,
+                    arch = xwin_arch,
                 );
                 build.env(format!("CARGO_TARGET_{}_RUSTFLAGS", env_target), rustflags);
 
