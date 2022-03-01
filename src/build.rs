@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::convert::TryInto;
 use std::env;
 use std::path::PathBuf;
@@ -212,18 +213,15 @@ impl Build {
 
     /// Generate cargo subcommand
     pub fn build_command(&self, subcommand: &str) -> Result<Command> {
-        let xwin_cache_dir = self
-            .xwin_cache_dir
-            .clone()
-            .unwrap_or_else(|| {
-                dirs::cache_dir()
-                    // If the really is no cache dir, cwd will also do
-                    .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
-                    .join(env!("CARGO_PKG_NAME"))
-                    .join("xwin")
-            })
-            .canonicalize()?;
+        let xwin_cache_dir = self.xwin_cache_dir.clone().unwrap_or_else(|| {
+            dirs::cache_dir()
+                // If the really is no cache dir, cwd will also do
+                .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
+                .join(env!("CARGO_PKG_NAME"))
+                .join("xwin")
+        });
         fs::create_dir_all(&xwin_cache_dir)?;
+        let xwin_cache_dir = xwin_cache_dir.canonicalize()?;
 
         let mut build = Command::new("cargo");
         build.arg(subcommand);
@@ -402,7 +400,18 @@ impl Build {
 
     fn setup_msvc_crt(&self, cache_dir: PathBuf) -> Result<()> {
         let done_mark_file = cache_dir.join("DONE");
-        if done_mark_file.is_file() {
+        let xwin_arches: HashSet<_> = self
+            .xwin_arch
+            .iter()
+            .map(|x| x.as_str().to_string())
+            .collect();
+        let mut downloaded_arches = HashSet::new();
+        if let Ok(content) = fs::read_to_string(&done_mark_file) {
+            for arch in content.trim().split_whitespace() {
+                downloaded_arches.insert(arch.to_string());
+            }
+        }
+        if xwin_arches.difference(&downloaded_arches).next().is_none() {
             return Ok(());
         }
 
@@ -480,7 +489,13 @@ impl Build {
 
         mp.set_move_cursor(true);
         ctx.execute(pkgs, work_items, arches, variants, op)?;
-        fs::write(done_mark_file, "")?;
+
+        let downloaded_arches: Vec<_> = self
+            .xwin_arch
+            .iter()
+            .map(|x| x.as_str().to_string())
+            .collect();
+        fs::write(done_mark_file, downloaded_arches.join(" "))?;
 
         let dl = cache_dir.join("dl");
         if dl.exists() {
