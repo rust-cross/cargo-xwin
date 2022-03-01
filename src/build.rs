@@ -165,6 +165,21 @@ pub struct Build {
     /// Unstable (nightly-only) flags to Cargo, see 'cargo -Z help' for details
     #[clap(short = 'Z', value_name = "FLAG", multiple_values = true)]
     pub unstable_flags: Vec<String>,
+
+    /// xwin cache directory
+    #[clap(long, parse(from_os_str), env = "XWIN_CACHE_DIR", hide = true)]
+    pub xwin_cache_dir: Option<PathBuf>,
+
+    /// The architectures to include in CRT/SDK
+    #[clap(
+        long,
+        env = "XWIN_ARCH",
+        possible_values(&["x86", "x86_64", "aarch", "aarch64"]),
+        use_value_delimiter = true,
+        default_value = "x86_64,aarch64",
+        hide = true,
+    )]
+    pub xwin_arch: Vec<xwin::Arch>,
 }
 
 impl Build {
@@ -181,11 +196,13 @@ impl Build {
 
     /// Generate cargo subcommand
     pub fn build_command(&self, subcommand: &str) -> Result<Command> {
-        let xwin_cache_dir = dirs::cache_dir()
-            // If the really is no cache dir, cwd will also do
-            .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
-            .join(env!("CARGO_PKG_NAME"))
-            .join("xwin");
+        let xwin_cache_dir = self.xwin_cache_dir.clone().unwrap_or_else(|| {
+            dirs::cache_dir()
+                // If the really is no cache dir, cwd will also do
+                .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
+                .join(env!("CARGO_PKG_NAME"))
+                .join("xwin")
+        });
         fs::create_dir_all(&xwin_cache_dir)?;
 
         let mut build = Command::new("cargo");
@@ -357,12 +374,18 @@ impl Build {
         }
 
         let draw_target = ProgressTarget::Stdout;
-        let ctx = std::sync::Arc::new(xwin::Ctx::with_temp(draw_target)?);
+        let ctx = if self.xwin_cache_dir.is_some() {
+            xwin::Ctx::with_dir(cache_dir.clone().try_into()?, draw_target)?
+        } else {
+            xwin::Ctx::with_temp(draw_target)?
+        };
+        let ctx = std::sync::Arc::new(ctx);
         let pkg_manifest = self.load_manifest(&ctx, draw_target)?;
 
-        let arches = vec![xwin::Arch::X86_64, xwin::Arch::X86, xwin::Arch::Aarch64]
-            .into_iter()
-            .fold(0, |acc, arch| acc | arch as u32);
+        let arches = self
+            .xwin_arch
+            .iter()
+            .fold(0, |acc, arch| acc | *arch as u32);
         let variants = vec![xwin::Variant::Desktop]
             .into_iter()
             .fold(0, |acc, var| acc | var as u32);
@@ -373,7 +396,7 @@ impl Build {
             enable_symlinks: !cfg!(target_os = "macos"),
             preserve_ms_arch_notation: false,
             copy: false,
-            output: cache_dir.try_into()?,
+            output: cache_dir.clone().try_into()?,
         });
         let pkgs = pkg_manifest.packages;
 
@@ -422,12 +445,17 @@ impl Build {
         .collect();
 
         mp.set_move_cursor(true);
-
-        let res =
-            std::thread::spawn(move || ctx.execute(pkgs, work_items, arches, variants, op)).join();
-        res.unwrap()?;
-
+        ctx.execute(pkgs, work_items, arches, variants, op)?;
         fs::write(done_mark_file, "")?;
+
+        let dl = cache_dir.join("dl");
+        if dl.exists() {
+            let _ = fs::remove_dir_all(dl);
+        }
+        let unpack = cache_dir.join("unpack");
+        if unpack.exists() {
+            let _ = fs::remove_dir_all(unpack);
+        }
         Ok(())
     }
 
