@@ -181,6 +181,7 @@ pub struct Build {
     )]
     pub xwin_arch: Vec<xwin::Arch>,
 
+    /// The variants to include
     #[clap(
         long,
         env = "XWIN_VARIANT",
