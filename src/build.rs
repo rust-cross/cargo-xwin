@@ -343,7 +343,16 @@ impl Build {
                 let env_target = target.to_uppercase().replace('-', "_");
                 build.env("TARGET_CC", format!("clang-cl --target={}", target));
                 build.env("TARGET_CXX", format!("clang-cl --target={}", target));
+                build.env(
+                    format!("CC_{}", env_target.to_lowercase()),
+                    format!("clang-cl --target={}", target),
+                );
+                build.env(
+                    format!("CXX_{}", env_target.to_lowercase()),
+                    format!("clang-cl --target={}", target),
+                );
                 build.env("TARGET_AR", "llvm-lib");
+                build.env(format!("AR_{}", env_target), "llvm-lib");
                 build.env(format!("CARGO_TARGET_{}_LINKER", env_target), "lld-link");
 
                 let cl_flags = format!(
