@@ -1,13 +1,14 @@
 use std::collections::HashSet;
 use std::convert::TryInto;
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
 use anyhow::{Context, Result};
 use clap::Parser;
 use fs_err as fs;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use path_slash::PathExt;
 use xwin::util::ProgressTarget;
 
 /// Compile a local package and all of its dependencies
@@ -392,6 +393,16 @@ impl Build {
                     }
                     build.env("PATH", new_path);
                 }
+
+                // CMake support
+                let cmake_toolchain = self.setup_cmake_toolchain(target, &xwin_cache_dir)?;
+                build
+                    .env("CMAKE_GENERATOR", "Ninja")
+                    .env("CMAKE_SYSTEM_NAME", "Windows")
+                    .env(
+                        format!("CMAKE_TOOLCHAIN_FILE_{}", env_target.to_lowercase()),
+                        cmake_toolchain,
+                    );
             }
         }
 
@@ -530,5 +541,112 @@ impl Build {
             xwin::manifest::get_package_manifest(ctx, &manifest, manifest_pb.clone())?;
         manifest_pb.finish_with_message("📥 downloaded");
         Ok(pkg_manifest)
+    }
+
+    fn setup_cmake_toolchain(&self, target: &str, xwin_cache_dir: &Path) -> Result<PathBuf> {
+        let cache_dir = dirs::cache_dir()
+            .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
+            .join(env!("CARGO_PKG_NAME"));
+        let cmake = cache_dir.join("cmake");
+        fs::create_dir_all(&cmake)?;
+
+        let override_file = cmake.join("override.cmake");
+        fs::write(override_file, include_bytes!("override.cmake"))?;
+
+        let toolchain_file = cmake.join(format!("{}-toolchain.cmake", target));
+        let target_arch = target
+            .split_once('-')
+            .map(|(x, _)| x)
+            .context("invalid target triple")?;
+        let processor = match target_arch {
+            "i586" | "i686" => "X86",
+            "x86_64" => "AMD64",
+            "aarch64" => "ARM64",
+            _ => target_arch,
+        };
+        let xwin_arch = match target_arch {
+            "i586" | "i686" => "x86",
+            _ => target_arch,
+        };
+
+        let content = format!(
+            r#"
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_PROCESSOR {processor})
+
+set(CMAKE_C_COMPILER clang-cl CACHE FILEPATH "")
+set(CMAKE_CXX_COMPILER clang-cl CACHE FILEPATH "")
+set(CMAKE_AR llvm-lib)
+set(CMAKE_LINKER lld-link CACHE FILEPATH "")
+
+set(COMPILE_FLAGS
+    --target={target}
+    -Wno-unused-command-line-argument
+    -fuse-ld=lld-link
+
+    /imsvc{xwin_dir}/crt/include
+    /imsvc{xwin_dir}/sdk/include/ucrt
+    /imsvc{xwin_dir}/sdk/include/um
+    /imsvc{xwin_dir}/sdk/include/shared)
+
+set(LINK_FLAGS
+    /manifest:no
+
+    -libpath:"{xwin_dir}/crt/lib/{xwin_arch}"
+    -libpath:"{xwin_dir}/sdk/lib/um/{xwin_arch}"
+    -libpath:"{xwin_dir}/sdk/lib/ucrt/{xwin_arch}")
+
+string(REPLACE ";" " " COMPILE_FLAGS "${{COMPILE_FLAGS}}")
+
+set(_CMAKE_C_FLAGS_INITIAL "${{CMAKE_C_FLAGS}}" CACHE STRING "")
+set(CMAKE_C_FLAGS "${{_CMAKE_C_FLAGS_INITIAL}} ${{COMPILE_FLAGS}}" CACHE STRING "" FORCE)
+
+set(_CMAKE_CXX_FLAGS_INITIAL "${{CMAKE_CXX_FLAGS}}" CACHE STRING "")
+set(CMAKE_CXX_FLAGS "${{_CMAKE_CXX_FLAGS_INITIAL}} ${{COMPILE_FLAGS}}" CACHE STRING "" FORCE)
+
+string(REPLACE ";" " " LINK_FLAGS "${{LINK_FLAGS}}")
+
+set(_CMAKE_EXE_LINKER_FLAGS_INITIAL "${{CMAKE_EXE_LINKER_FLAGS}}" CACHE STRING "")
+set(CMAKE_EXE_LINKER_FLAGS "${{_CMAKE_EXE_LINKER_FLAGS_INITIAL}} ${{LINK_FLAGS}}" CACHE STRING "" FORCE)
+
+set(_CMAKE_MODULE_LINKER_FLAGS_INITIAL "${{CMAKE_MODULE_LINKER_FLAGS}}" CACHE STRING "")
+set(CMAKE_MODULE_LINKER_FLAGS "${{_CMAKE_MODULE_LINKER_FLAGS_INITIAL}} ${{LINK_FLAGS}}" CACHE STRING "" FORCE)
+
+set(_CMAKE_SHARED_LINKER_FLAGS_INITIAL "${{CMAKE_SHARED_LINKER_FLAGS}}" CACHE STRING "")
+set(CMAKE_SHARED_LINKER_FLAGS "${{_CMAKE_SHARED_LINKER_FLAGS_INITIAL}} ${{LINK_FLAGS}}" CACHE STRING "" FORCE)
+
+# CMake populates these with a bunch of unnecessary libraries, which requires
+# extra case-correcting symlinks and what not. Instead, let projects explicitly
+# control which libraries they require.
+set(CMAKE_C_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
+set(CMAKE_CXX_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
+
+set(CMAKE_TRY_COMPILE_CONFIGURATION Release)
+
+# Allow clang-cl to work with macOS paths.
+set(CMAKE_USER_MAKE_RULES_OVERRIDE "${{CMAKE_CURRENT_LIST_DIR}}/override.cmake")
+        "#,
+            target = target,
+            processor = processor,
+            xwin_dir = adjust_canonicalization(xwin_cache_dir.to_slash_lossy()),
+            xwin_arch = xwin_arch,
+        );
+        fs::write(&toolchain_file, &content)?;
+        Ok(toolchain_file)
+    }
+}
+
+#[cfg(target_family = "unix")]
+pub fn adjust_canonicalization(p: String) -> String {
+    p
+}
+
+#[cfg(target_os = "windows")]
+pub fn adjust_canonicalization(p: String) -> String {
+    const VERBATIM_PREFIX: &str = r#"\\?\"#;
+    if p.starts_with(VERBATIM_PREFIX) {
+        p[VERBATIM_PREFIX.len()..].to_string()
+    } else {
+        p
     }
 }
