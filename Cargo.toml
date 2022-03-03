@@ -16,4 +16,5 @@ clap = { version = "3.1.2", features = ["derive", "env", "wrap_help"] }
 dirs = "4.0.0"
 fs-err = "2.7.0"
 indicatif = "0.17.0-rc.6"
+path-slash = "0.1.4"
 xwin = "0.2.0"

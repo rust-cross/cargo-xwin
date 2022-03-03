@@ -27,6 +27,12 @@ jobs:
         toolchain: [stable, nightly]
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          repository: messense/crfsuite-rs
+          path: tests/crfsuite-rs
+          submodules: true
+      - uses: seanmiddleditch/gha-setup-ninja@master
       - name: Install GNU tar
         if: matrix.os == 'macos-latest'
         run: |
@@ -68,6 +74,8 @@ jobs:
           cargo run --release xwinbuild --target x86_64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
           cargo run --release xwinbuild --target x86_64-pc-windows-msvc --manifest-path tests/hello-tls/Cargo.toml
           cargo run --release xwinbuild --target x86_64-pc-windows-msvc --manifest-path tests/hello-rustls/Cargo.toml
+          # Test CMake support
+          cargo run --release xwinbuild --target x86_64-pc-windows-msvc --manifest-path tests/crfsuite-rs/Cargo.toml
       - name: Test - aarch64
         run: |
           rustup target add aarch64-pc-windows-msvc
@@ -75,6 +83,8 @@ jobs:
           cargo run --release xwinbuild --target aarch64-pc-windows-msvc --manifest-path tests/libhello/Cargo.toml
           cargo run --release xwinbuild --target aarch64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
           cargo run --release xwinbuild --target aarch64-pc-windows-msvc --manifest-path tests/hello-tls/Cargo.toml
+          # Test CMake support
+          cargo run --release xwinbuild --target aarch64-pc-windows-msvc --manifest-path tests/crfsuite-rs/Cargo.toml
 
   fmt:
     name: Rustfmt
