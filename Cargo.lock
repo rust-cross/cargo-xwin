@@ -90,7 +90,7 @@ checksum = "6f3132262930b0522068049f5870a856ab8affc80c70d08b6ecb785771a6fc23"
 
 [[package]]
 name = "cargo-xwinbuild"
-version = "0.3.1-beta.1"
+version = "0.3.1"
 dependencies = [
  "anyhow",
  "clap",
