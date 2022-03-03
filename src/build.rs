@@ -374,12 +374,14 @@ impl Build {
                     "i586" | "i686" => "x86",
                     _ => target_arch,
                 };
-                let rustflags = format!(
-                    "-Lnative={dir}/crt/lib/{arch} -Lnative={dir}/sdk/lib/um/{arch} -Lnative={dir}/sdk/lib/ucrt/{arch}",
+
+                let mut rustflags = env::var_os("RUSTFLAGS").unwrap_or_default();
+                rustflags.push(format!(
+                    " -Lnative={dir}/crt/lib/{arch} -Lnative={dir}/sdk/lib/um/{arch} -Lnative={dir}/sdk/lib/ucrt/{arch}",
                     dir = xwin_cache_dir.display(),
                     arch = xwin_arch,
-                );
-                build.env(format!("CARGO_TARGET_{}_RUSTFLAGS", env_target), rustflags);
+                ));
+                build.env("RUSTFLAGS", rustflags);
 
                 #[cfg(target_os = "macos")]
                 if let Ok(path) = env::var("PATH") {
