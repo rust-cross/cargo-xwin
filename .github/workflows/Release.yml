@@ -55,6 +55,7 @@ jobs:
           file_glob: true
           overwrite: true
           tag: ${{ github.ref }}
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
 
   windows:
     runs-on: windows-latest
@@ -111,6 +112,7 @@ jobs:
           file: target/${{ matrix.platform.target }}/release/cargo-xwinbuild.zip
           overwrite: true
           tag: ${{ github.ref }}
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
 
   linux:
     runs-on: ubuntu-latest
@@ -171,6 +173,7 @@ jobs:
           file_glob: true
           overwrite: true
           tag: ${{ github.ref }}
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
 
   release:
     name: Release
