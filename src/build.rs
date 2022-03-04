@@ -429,7 +429,9 @@ impl Build {
         }
 
         let draw_target = ProgressTarget::Stdout;
-        let ctx = xwin::Ctx::with_dir(cache_dir.clone().try_into()?, draw_target)?;
+
+        let xwin_dir = adjust_canonicalization(cache_dir.display().to_string());
+        let ctx = xwin::Ctx::with_dir(xwin::PathBuf::from(xwin_dir), draw_target)?;
         let ctx = std::sync::Arc::new(ctx);
         let pkg_manifest = self.load_manifest(&ctx, draw_target)?;
 
