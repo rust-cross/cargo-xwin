@@ -343,28 +343,31 @@ impl Build {
         if let Some(target) = self.target.as_ref() {
             if target.contains("msvc") {
                 self.setup_msvc_crt(xwin_cache_dir.clone())?;
-                let env_target = target.to_uppercase().replace('-', "_");
+                let env_target = target.to_lowercase().replace('-', "_");
                 build.env("TARGET_CC", format!("clang-cl --target={}", target));
                 build.env("TARGET_CXX", format!("clang-cl --target={}", target));
                 build.env(
-                    format!("CC_{}", env_target.to_lowercase()),
+                    format!("CC_{}", env_target),
                     format!("clang-cl --target={}", target),
                 );
                 build.env(
-                    format!("CXX_{}", env_target.to_lowercase()),
+                    format!("CXX_{}", env_target),
                     format!("clang-cl --target={}", target),
                 );
                 build.env("TARGET_AR", "llvm-lib");
                 build.env(format!("AR_{}", env_target), "llvm-lib");
-                build.env(format!("CARGO_TARGET_{}_LINKER", env_target), "lld-link");
+                build.env(
+                    format!("CARGO_TARGET_{}_LINKER", env_target.to_uppercase()),
+                    "lld-link",
+                );
 
                 let cl_flags = format!(
                     "-Wno-unused-command-line-argument -fuse-ld=lld-link /imsvc{dir}/crt/include /imsvc{dir}/sdk/include/ucrt /imsvc{dir}/sdk/include/um /imsvc{dir}/sdk/include/shared",
                     dir = xwin_cache_dir.display()
                 );
                 build.env("CL_FLAGS", &cl_flags);
-                build.env(format!("CFLAGS_{}", env_target.to_lowercase()), &cl_flags);
-                build.env(format!("CXXFLAGS_{}", env_target.to_lowercase()), &cl_flags);
+                build.env(format!("CFLAGS_{}", env_target), &cl_flags);
+                build.env(format!("CXXFLAGS_{}", env_target), &cl_flags);
 
                 let target_arch = target
                     .split_once('-')
@@ -402,7 +405,7 @@ impl Build {
                     .env("CMAKE_GENERATOR", "Ninja")
                     .env("CMAKE_SYSTEM_NAME", "Windows")
                     .env(
-                        format!("CMAKE_TOOLCHAIN_FILE_{}", env_target.to_lowercase()),
+                        format!("CMAKE_TOOLCHAIN_FILE_{}", env_target),
                         cmake_toolchain,
                     );
             }

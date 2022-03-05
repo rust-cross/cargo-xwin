@@ -2,6 +2,7 @@
 name = "cargo-xwinbuild"
 version = "0.3.3"
 edition = "2018"
+default-run = "cargo-xwinbuild"
 description = "Cross compile Cargo project to Windows msvc target with ease"
 license = "MIT"
 keywords = ["windows", "cargo", "msvc"]
