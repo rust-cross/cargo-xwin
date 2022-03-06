@@ -1,13 +1,12 @@
 [package]
-name = "cargo-xwinbuild"
+name = "cargo-xwin"
 version = "0.4.0"
 edition = "2018"
-default-run = "cargo-xwinbuild"
 description = "Cross compile Cargo project to Windows msvc target with ease"
 license = "MIT"
 keywords = ["windows", "cargo", "msvc"]
 readme = "README.md"
-repository = "https://github.com/messense/cargo-xwinbuild"
+repository = "https://github.com/messense/cargo-xwin"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

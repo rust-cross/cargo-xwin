@@ -1,9 +1,11 @@
-# cargo-xwinbuild
+# cargo-xwin
 
-[![CI](https://github.com/messense/cargo-xwinbuild/workflows/CI/badge.svg)](https://github.com/messense/cargo-xwinbuild/actions?query=workflow%3ACI)
-[![Crates.io](https://img.shields.io/crates/v/cargo-xwinbuild.svg)](https://crates.io/crates/cargo-xwinbuild)
-[![docs.rs](https://docs.rs/cargo-xwinbuild/badge.svg)](https://docs.rs/cargo-xwinbuild/)
-[![PyPI](https://img.shields.io/pypi/v/cargo-xwinbuild.svg)](https://pypi.org/project/cargo-xwinbuild)
+_formerly cargo-xwinbuild_
+
+[![CI](https://github.com/messense/cargo-xwin/workflows/CI/badge.svg)](https://github.com/messense/cargo-xwin/actions?query=workflow%3ACI)
+[![Crates.io](https://img.shields.io/crates/v/cargo-xwin.svg)](https://crates.io/crates/cargo-xwin)
+[![docs.rs](https://docs.rs/cargo-xwin/badge.svg)](https://docs.rs/cargo-xwin/)
+[![PyPI](https://img.shields.io/pypi/v/cargo-xwin.svg)](https://pypi.org/project/cargo-xwin)
 
 Cross compile Cargo project to Windows msvc target with ease. (LLVM installation required.)
 
@@ -12,25 +14,25 @@ Cross compile Cargo project to Windows msvc target with ease. (LLVM installation
 ## Installation
 
 ```bash
-cargo install cargo-xwinbuild
+cargo install cargo-xwin
 ```
 
 You can also install it using pip:
 
 ```bash
-pip install cargo-xwinbuild
+pip install cargo-xwin
 ```
 
 ## Usage
 
 1. Install [LLVM](https://llvm.org), on macOS: `brew install llvm`
 2. Install Rust Windows msvc target via rustup, for example, `rustup target add x86_64-pc-windows-msvc`
-3. Run `cargo xwinbuild`, for example, `cargo xwinbuild --target x86_64-pc-windows-msvc`
+3. Run `cargo xwin`, for example, `cargo xwin build --target x86_64-pc-windows-msvc`
 
 ### Run tests with wine
 
-With wine installed, you can run tests with the `cargo xwintest` command,
-for example, `cargo xwintest --target x86_64-pc-windows-msvc`
+With wine installed, you can run tests with the `cargo xwin test` command,
+for example, `cargo xwin test --target x86_64-pc-windows-msvc`
 
 ### Customization
 
@@ -46,7 +48,7 @@ The Microsoft CRT and Windows SDK can be customized using the following environm
 ### CMake Support
 
 Some Rust crates use the [cmake](https://github.com/alexcrichton/cmake-rs) crate to build C/C++ dependencies,
-cargo-xwinbuild will generate a [CMake toolchain](https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html) file
+cargo-xwin will generate a [CMake toolchain](https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html) file
 automatically to make cross compilation work out of the box.
 
 **[ninja](https://ninja-build.org/) is required** to enable CMake support.
