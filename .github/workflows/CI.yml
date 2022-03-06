@@ -72,29 +72,29 @@ jobs:
         with:
           command: build
           args: --release
-      - name: xwinbuild - x86_64
+      - name: xwin build - x86_64
         run: |
           rustup target add x86_64-pc-windows-msvc
 
-          cargo run --release xwinbuild --target x86_64-pc-windows-msvc --manifest-path tests/libhello/Cargo.toml
-          cargo run --release xwinbuild --target x86_64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
-          cargo run --release xwinbuild --target x86_64-pc-windows-msvc --manifest-path tests/hello-tls/Cargo.toml
-          cargo run --release xwinbuild --target x86_64-pc-windows-msvc --manifest-path tests/hello-rustls/Cargo.toml
+          cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/libhello/Cargo.toml
+          cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
+          cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/hello-tls/Cargo.toml
+          cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/hello-rustls/Cargo.toml
           # Test CMake support
-          cargo run --release xwinbuild --target x86_64-pc-windows-msvc --manifest-path tests/crfsuite-rs/Cargo.toml
+          cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/crfsuite-rs/Cargo.toml
       - name: xwintest - x86_64
         if: matrix.os == 'ubuntu-latest'
         run: |
-          cargo run --release --bin cargo-xwintest xwintest --target x86_64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
-      - name: xwinbuild - aarch64
+          cargo run --release xwin test --target x86_64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
+      - name: xwin build - aarch64
         run: |
           rustup target add aarch64-pc-windows-msvc
 
-          cargo run --release xwinbuild --target aarch64-pc-windows-msvc --manifest-path tests/libhello/Cargo.toml
-          cargo run --release xwinbuild --target aarch64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
-          cargo run --release xwinbuild --target aarch64-pc-windows-msvc --manifest-path tests/hello-tls/Cargo.toml
+          cargo run --release xwin build --target aarch64-pc-windows-msvc --manifest-path tests/libhello/Cargo.toml
+          cargo run --release xwin build --target aarch64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
+          cargo run --release xwin build --target aarch64-pc-windows-msvc --manifest-path tests/hello-tls/Cargo.toml
           # Test CMake support
-          cargo run --release xwinbuild --target aarch64-pc-windows-msvc --manifest-path tests/crfsuite-rs/Cargo.toml
+          cargo run --release xwin build --target aarch64-pc-windows-msvc --manifest-path tests/crfsuite-rs/Cargo.toml
 
   fmt:
     name: Rustfmt
