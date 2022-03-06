@@ -82,7 +82,7 @@ jobs:
           cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/hello-rustls/Cargo.toml
           # Test CMake support
           cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/crfsuite-rs/Cargo.toml
-      - name: xwintest - x86_64
+      - name: xwin test - x86_64
         if: matrix.os == 'ubuntu-latest'
         run: |
           cargo run --release xwin test --target x86_64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml

@@ -27,7 +27,7 @@ pip install cargo-xwin
 
 1. Install [LLVM](https://llvm.org), on macOS: `brew install llvm`
 2. Install Rust Windows msvc target via rustup, for example, `rustup target add x86_64-pc-windows-msvc`
-3. Run `cargo xwin`, for example, `cargo xwin build --target x86_64-pc-windows-msvc`
+3. Run `cargo xwin build`, for example, `cargo xwin build --target x86_64-pc-windows-msvc`
 
 ### Run tests with wine
 
