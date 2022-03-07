@@ -10,7 +10,7 @@ pub enum Cli {
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Subcommand)]
-#[clap(global_setting(clap::AppSettings::DeriveDisplayOrder))]
+#[clap(version, global_setting(clap::AppSettings::DeriveDisplayOrder))]
 pub enum Opt {
     #[clap(name = "build")]
     Build(Build),
