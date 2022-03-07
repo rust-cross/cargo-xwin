@@ -1,4 +1,4 @@
-use cargo_xwin::{Build, Test};
+use cargo_xwin::{Build, Run, Test};
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
@@ -14,6 +14,8 @@ pub enum Cli {
 pub enum Opt {
     #[clap(name = "build")]
     Build(Build),
+    #[clap(name = "run")]
+    Run(Run),
     #[clap(name = "test")]
     Test(Test),
 }
@@ -23,6 +25,7 @@ fn main() -> anyhow::Result<()> {
     match cli {
         Cli::Opt(opt) => match opt {
             Opt::Build(build) => build.execute()?,
+            Opt::Run(run) => run.execute()?,
             Opt::Test(test) => test.execute()?,
         },
     }
