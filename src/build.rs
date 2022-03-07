@@ -11,6 +11,8 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use path_slash::PathExt;
 use xwin::util::ProgressTarget;
 
+use crate::common::XWinOptions;
+
 /// Compile a local package and all of its dependencies
 #[derive(Clone, Debug, Default, Parser)]
 #[clap(setting = clap::AppSettings::DeriveDisplayOrder, after_help = "Run `cargo help build` for more detailed information.")]
@@ -168,36 +170,8 @@ pub struct Build {
     #[clap(short = 'Z', value_name = "FLAG", multiple_values = true)]
     pub unstable_flags: Vec<String>,
 
-    /// xwin cache directory
-    #[clap(long, parse(from_os_str), env = "XWIN_CACHE_DIR", hide = true)]
-    pub xwin_cache_dir: Option<PathBuf>,
-
-    /// The architectures to include in CRT/SDK
-    #[clap(
-        long,
-        env = "XWIN_ARCH",
-        possible_values(&["x86", "x86_64", "aarch", "aarch64"]),
-        use_value_delimiter = true,
-        default_value = "x86_64,aarch64",
-        hide = true,
-    )]
-    pub xwin_arch: Vec<xwin::Arch>,
-
-    /// The variants to include
-    #[clap(
-        long,
-        env = "XWIN_VARIANT",
-        possible_values(&["desktop", "onecore", /*"store",*/ "spectre"]),
-        use_value_delimiter = true,
-        default_value = "desktop",
-        hide = true,
-    )]
-    pub xwin_variant: Vec<xwin::Variant>,
-
-    /// The version to retrieve, can either be a major version of 15 or 16, or
-    /// a "<major>.<minor>" version.
-    #[clap(long, env = "XWIN_VERSION", default_value = "16", hide = true)]
-    pub xwin_version: String,
+    #[clap(flatten)]
+    pub xwin: XWinOptions,
 }
 
 impl Build {
@@ -214,7 +188,7 @@ impl Build {
 
     /// Generate cargo subcommand
     pub fn build_command(&self, subcommand: &str) -> Result<Command> {
-        let xwin_cache_dir = self.xwin_cache_dir.clone().unwrap_or_else(|| {
+        let xwin_cache_dir = self.xwin.xwin_cache_dir.clone().unwrap_or_else(|| {
             dirs::cache_dir()
                 // If the really is no cache dir, cwd will also do
                 .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
@@ -417,6 +391,7 @@ impl Build {
     fn setup_msvc_crt(&self, cache_dir: PathBuf) -> Result<()> {
         let done_mark_file = cache_dir.join("DONE");
         let xwin_arches: HashSet<_> = self
+            .xwin
             .xwin_arch
             .iter()
             .map(|x| x.as_str().to_string())
@@ -439,10 +414,12 @@ impl Build {
         let pkg_manifest = self.load_manifest(&ctx, draw_target)?;
 
         let arches = self
+            .xwin
             .xwin_arch
             .iter()
             .fold(0, |acc, arch| acc | *arch as u32);
         let variants = self
+            .xwin
             .xwin_variant
             .iter()
             .fold(0, |acc, var| acc | *var as u32);
@@ -505,6 +482,7 @@ impl Build {
         ctx.execute(pkgs, work_items, arches, variants, op)?;
 
         let downloaded_arches: Vec<_> = self
+            .xwin
             .xwin_arch
             .iter()
             .map(|x| x.as_str().to_string())
@@ -538,8 +516,12 @@ impl Build {
         manifest_pb.set_prefix("Manifest");
         manifest_pb.set_message("📥 downloading");
 
-        let manifest =
-            xwin::manifest::get_manifest(ctx, &self.xwin_version, "release", manifest_pb.clone())?;
+        let manifest = xwin::manifest::get_manifest(
+            ctx,
+            &self.xwin.xwin_version,
+            "release",
+            manifest_pb.clone(),
+        )?;
         let pkg_manifest =
             xwin::manifest::get_package_manifest(ctx, &manifest, manifest_pb.clone())?;
         manifest_pb.finish_with_message("📥 downloaded");

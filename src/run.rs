@@ -5,6 +5,7 @@ use std::process;
 use anyhow::{Context, Result};
 use clap::Parser;
 
+use crate::common::XWinOptions;
 use crate::Build;
 
 /// Run a binary or example of the local package
@@ -112,36 +113,8 @@ pub struct Run {
     #[clap(short = 'Z', value_name = "FLAG", multiple_values = true)]
     pub unstable_flags: Vec<String>,
 
-    /// xwin cache directory
-    #[clap(long, parse(from_os_str), env = "XWIN_CACHE_DIR", hide = true)]
-    pub xwin_cache_dir: Option<PathBuf>,
-
-    /// The architectures to include in CRT/SDK
-    #[clap(
-        long,
-        env = "XWIN_ARCH",
-        possible_values(&["x86", "x86_64", "aarch", "aarch64"]),
-        use_value_delimiter = true,
-        default_value = "x86_64,aarch64",
-        hide = true,
-    )]
-    pub xwin_arch: Vec<xwin::Arch>,
-
-    /// The variants to include
-    #[clap(
-        long,
-        env = "XWIN_VARIANT",
-        possible_values(&["desktop", "onecore", /*"store",*/ "spectre"]),
-        use_value_delimiter = true,
-        default_value = "desktop",
-        hide = true,
-    )]
-    pub xwin_variant: Vec<xwin::Variant>,
-
-    /// The version to retrieve, can either be a major version of 15 or 16, or
-    /// a "<major>.<minor>" version.
-    #[clap(long, env = "XWIN_VERSION", default_value = "16", hide = true)]
-    pub xwin_version: String,
+    #[clap(flatten)]
+    pub xwin: XWinOptions,
 
     /// Arguments for the binary to run
     #[clap(takes_value = true, multiple_values = true)]
@@ -175,10 +148,7 @@ impl Run {
             offline: self.offline,
             config: self.config.clone(),
             unstable_flags: self.unstable_flags.clone(),
-            xwin_cache_dir: self.xwin_cache_dir.clone(),
-            xwin_arch: self.xwin_arch.clone(),
-            xwin_variant: self.xwin_variant.clone(),
-            xwin_version: self.xwin_version.clone(),
+            xwin: self.xwin.clone(),
             ..Default::default()
         };
         let mut run = build.build_command("run")?;
