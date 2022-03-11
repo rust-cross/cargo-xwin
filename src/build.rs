@@ -253,10 +253,10 @@ impl Build {
                 } else {
                     env_path
                 };
-                if which_in("clang-cl", Some(env_path), env::current_dir()?).is_err() {
-                    if let Ok(clang) = which("clang") {
-                        let cache_dir = xwin_cache_dir.parent().unwrap();
+                let cache_dir = xwin_cache_dir.parent().unwrap();
 
+                if which_in("clang-cl", Some(env_path.clone()), env::current_dir()?).is_err() {
+                    if let Ok(clang) = which("clang") {
                         #[cfg(windows)]
                         {
                             let symlink = cache_dir.join("clang-cl.exe");
@@ -272,9 +272,30 @@ impl Build {
                                 std::os::unix::fs::symlink(clang, symlink)?;
                             }
                         }
-                        env_paths.push(cache_dir.to_path_buf());
                     }
                 }
+                if which_in("lld-link", Some(env_path), env::current_dir()?).is_err() {
+                    let bin_dir = rustc_target_bin_dir()?;
+                    let rust_lld = bin_dir.join("rust-lld");
+                    if rust_lld.exists() {
+                        #[cfg(windows)]
+                        {
+                            let symlink = cache_dir.join("lld-link.exe");
+                            if !symlink.exists() {
+                                std::os::windows::fs::symlink_file(rust_lld, symlink)?;
+                            }
+                        }
+
+                        #[cfg(unix)]
+                        {
+                            let symlink = cache_dir.join("lld-link");
+                            if !symlink.exists() {
+                                std::os::unix::fs::symlink(rust_lld, symlink)?;
+                            }
+                        }
+                    }
+                }
+                env_paths.push(cache_dir.to_path_buf());
 
                 build.env("TARGET_CC", format!("clang-cl --target={}", target));
                 build.env("TARGET_CXX", format!("clang-cl --target={}", target));
@@ -289,10 +310,9 @@ impl Build {
                 build.env("TARGET_AR", "llvm-lib");
                 build.env(format!("AR_{}", env_target), "llvm-lib");
 
-                let lld_link = which("lld-link").unwrap_or_else(|_| "rust-lld".into());
                 build.env(
                     format!("CARGO_TARGET_{}_LINKER", env_target.to_uppercase()),
-                    lld_link,
+                    "lld-link",
                 );
 
                 let cl_flags = format!(
@@ -594,4 +614,14 @@ pub fn adjust_canonicalization(p: String) -> String {
     } else {
         p
     }
+}
+
+fn rustc_target_bin_dir() -> Result<PathBuf> {
+    let output = Command::new("rustc")
+        .args(&["--print", "target-libdir"])
+        .output()?;
+    let stdout = String::from_utf8(output.stdout)?;
+    let lib_dir = Path::new(&stdout);
+    let bin_dir = lib_dir.parent().unwrap().join("bin");
+    Ok(bin_dir)
 }
