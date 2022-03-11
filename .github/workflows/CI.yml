@@ -42,13 +42,8 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update
-          sudo apt-get install --quiet -y wine-stable winetricks
+          sudo apt-get install --quiet -y llvm clang wine-stable winetricks
           winetricks nocrashdialog
-      - name: Install LLVM and Clang
-        if: matrix.os == 'ubuntu-latest'
-        uses: KyleMayes/install-llvm-action@v1
-        with:
-          version: "13"
       - name: Install LLVM and Clang
         if: matrix.os == 'windows-latest'
         run: choco install -y llvm
