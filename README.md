@@ -7,9 +7,17 @@ _formerly cargo-xwinbuild_
 [![docs.rs](https://docs.rs/cargo-xwin/badge.svg)](https://docs.rs/cargo-xwin/)
 [![PyPI](https://img.shields.io/pypi/v/cargo-xwin.svg)](https://pypi.org/project/cargo-xwin)
 
-Cross compile Cargo project to Windows msvc target with ease. (LLVM installation required.)
+Cross compile Cargo project to Windows msvc target with ease.
 
 **By using this software you are consented to accept the license at [https://go.microsoft.com/fwlink/?LinkId=2086102](https://go.microsoft.com/fwlink/?LinkId=2086102)**
+
+## Prerequisite
+
+1. For pure Rust project, no prerequisites needed.
+2. For C/C++ dependencies, install [clang](https://clang.llvm.org/).
+3. For assembly dependencies, it needs `llvm-lib`, install [llvm](https://llvm.org).
+
+On macOS, run `brew install llvm` then you are good to go.
 
 ## Installation
 
@@ -25,9 +33,8 @@ pip install cargo-xwin
 
 ## Usage
 
-1. Install [LLVM](https://llvm.org), on macOS: `brew install llvm`
-2. Install Rust Windows msvc target via rustup, for example, `rustup target add x86_64-pc-windows-msvc`
-3. Run `cargo xwin build`, for example, `cargo xwin build --target x86_64-pc-windows-msvc`
+1. Install Rust Windows msvc target via rustup, for example, `rustup target add x86_64-pc-windows-msvc`
+2. Run `cargo xwin build`, for example, `cargo xwin build --target x86_64-pc-windows-msvc`
 
 ### Run tests with wine
 
