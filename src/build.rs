@@ -9,6 +9,7 @@ use clap::Parser;
 use fs_err as fs;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use path_slash::PathExt;
+use which::{which, which_in};
 use xwin::util::ProgressTarget;
 
 use crate::common::{CargoOptions, XWinOptions};
@@ -241,6 +242,40 @@ impl Build {
             if target.contains("msvc") {
                 self.setup_msvc_crt(xwin_cache_dir.clone())?;
                 let env_target = target.to_lowercase().replace('-', "_");
+                let env_path = env::var("PATH").unwrap_or_default();
+                let mut env_paths: Vec<_> = env::split_paths(&env_path).collect();
+
+                let env_path = if cfg!(target_os = "macos") {
+                    let mut new_path = env_path;
+                    new_path.push_str(":/opt/homebrew/opt/llvm/bin");
+                    new_path.push_str(":/usr/local/opt/llvm/bin");
+                    new_path
+                } else {
+                    env_path
+                };
+                if which_in("clang-cl", Some(env_path), env::current_dir()?).is_err() {
+                    if let Ok(clang) = which("clang") {
+                        let cache_dir = xwin_cache_dir.parent().unwrap();
+
+                        #[cfg(windows)]
+                        {
+                            let symlink = cache_dir.join("clang-cl.exe");
+                            if !symlink.exists() {
+                                std::os::windows::fs::symlink_file(clang, symlink)?;
+                            }
+                        }
+
+                        #[cfg(unix)]
+                        {
+                            let symlink = cache_dir.join("clang-cl");
+                            if !symlink.exists() {
+                                std::os::unix::fs::symlink(clang, symlink)?;
+                            }
+                        }
+                        env_paths.push(cache_dir.to_path_buf());
+                    }
+                }
+
                 build.env("TARGET_CC", format!("clang-cl --target={}", target));
                 build.env("TARGET_CXX", format!("clang-cl --target={}", target));
                 build.env(
@@ -253,9 +288,11 @@ impl Build {
                 );
                 build.env("TARGET_AR", "llvm-lib");
                 build.env(format!("AR_{}", env_target), "llvm-lib");
+
+                let lld_link = which("lld-link").unwrap_or_else(|_| "rust-lld".into());
                 build.env(
                     format!("CARGO_TARGET_{}_LINKER", env_target.to_uppercase()),
-                    "rust-lld",
+                    lld_link,
                 );
 
                 let cl_flags = format!(
@@ -284,17 +321,17 @@ impl Build {
                 build.env("RUSTFLAGS", rustflags);
 
                 #[cfg(target_os = "macos")]
-                if let Ok(path) = env::var("PATH") {
-                    let mut new_path = path.clone();
-                    if cfg!(target_arch = "x86_64") && !path.contains("/usr/local/opt/llvm/bin") {
-                        new_path.push_str(":/usr/local/opt/llvm/bin");
-                    } else if cfg!(target_arch = "aarch64")
-                        && !path.contains("/opt/homebrew/opt/llvm/bin")
-                    {
-                        new_path.push_str(":/opt/homebrew/opt/llvm/bin");
+                {
+                    let usr_llvm = "/usr/local/opt/llvm/bin".into();
+                    let opt_llvm = "/opt/homebrew/opt/llvm/bin".into();
+                    if cfg!(target_arch = "x86_64") && !env_paths.contains(&usr_llvm) {
+                        env_paths.push(usr_llvm);
+                    } else if cfg!(target_arch = "aarch64") && !env_paths.contains(&opt_llvm) {
+                        env_paths.push(opt_llvm);
                     }
-                    build.env("PATH", new_path);
                 }
+
+                build.env("PATH", env::join_paths(env_paths)?);
 
                 // CMake support
                 let cmake_toolchain = self.setup_cmake_toolchain(target, &xwin_cache_dir)?;
