@@ -255,7 +255,7 @@ impl Build {
                 build.env(format!("AR_{}", env_target), "llvm-lib");
                 build.env(
                     format!("CARGO_TARGET_{}_LINKER", env_target.to_uppercase()),
-                    "lld-link",
+                    "rust-lld",
                 );
 
                 let cl_flags = format!(
@@ -277,7 +277,7 @@ impl Build {
 
                 let mut rustflags = env::var_os("RUSTFLAGS").unwrap_or_default();
                 rustflags.push(format!(
-                    " -Lnative={dir}/crt/lib/{arch} -Lnative={dir}/sdk/lib/um/{arch} -Lnative={dir}/sdk/lib/ucrt/{arch}",
+                    " -C linker-flavor=lld-link -Lnative={dir}/crt/lib/{arch} -Lnative={dir}/sdk/lib/um/{arch} -Lnative={dir}/sdk/lib/ucrt/{arch}",
                     dir = xwin_cache_dir.display(),
                     arch = xwin_arch,
                 ));
