@@ -2,7 +2,7 @@ use cargo_xwin::{Build, Run, Test};
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
-#[clap(version, name = "cargo")]
+#[clap(version, name = "cargo-xwin")]
 pub enum Cli {
     #[clap(subcommand, name = "xwin")]
     Opt(Opt),
