@@ -12,87 +12,14 @@ use path_slash::PathExt;
 use which::{which, which_in};
 use xwin::util::ProgressTarget;
 
-use crate::common::{CargoOptions, XWinOptions};
+use crate::common::XWinOptions;
 
 /// Compile a local package and all of its dependencies
 #[derive(Clone, Debug, Default, Parser)]
 #[clap(setting = clap::AppSettings::DeriveDisplayOrder, after_help = "Run `cargo help build` for more detailed information.")]
 pub struct Build {
     #[clap(flatten)]
-    pub cargo: CargoOptions,
-
-    /// Package to build (see `cargo help pkgid`)
-    #[clap(
-        short = 'p',
-        long = "package",
-        value_name = "SPEC",
-        multiple_values = true
-    )]
-    pub packages: Vec<String>,
-
-    /// Build all packages in the workspace
-    #[clap(long)]
-    pub workspace: bool,
-
-    /// Exclude packages from the build
-    #[clap(long, value_name = "SPEC", multiple_values = true)]
-    pub exclude: Vec<String>,
-
-    /// Alias for workspace (deprecated)
-    #[clap(long)]
-    pub all: bool,
-
-    /// Build only this package's library
-    #[clap(long)]
-    pub lib: bool,
-
-    /// Build only the specified binary
-    #[clap(long, value_name = "NAME", multiple_values = true)]
-    pub bin: Vec<String>,
-
-    /// Build all binaries
-    #[clap(long)]
-    pub bins: bool,
-
-    /// Build only the specified example
-    #[clap(long, value_name = "NAME", multiple_values = true)]
-    pub example: Vec<String>,
-
-    /// Build all examples
-    #[clap(long)]
-    pub examples: bool,
-
-    /// Build only the specified test target
-    #[clap(long, value_name = "NAME", multiple_values = true)]
-    pub test: Vec<String>,
-
-    /// Build all tests
-    #[clap(long)]
-    pub tests: bool,
-
-    /// Build only the specified bench target
-    #[clap(long, value_name = "NAME", multiple_values = true)]
-    pub bench: Vec<String>,
-
-    /// Build all benches
-    #[clap(long)]
-    pub benches: bool,
-
-    /// Build all targets
-    #[clap(long)]
-    pub all_targets: bool,
-
-    /// Copy final artifacts to this directory (unstable)
-    #[clap(long, value_name = "PATH", parse(from_os_str))]
-    pub out_dir: Option<PathBuf>,
-
-    /// Output the build plan in JSON (unstable)
-    #[clap(long)]
-    pub build_plan: bool,
-
-    /// Outputs a future incompatibility report at the end of the build (unstable)
-    #[clap(long)]
-    pub future_incompat_report: bool,
+    pub cargo: cargo_options::Build,
 
     #[clap(flatten)]
     pub xwin: XWinOptions,
@@ -129,49 +56,49 @@ impl Build {
         if self.cargo.quiet {
             build.arg("--quiet");
         }
-        for pkg in &self.packages {
+        for pkg in &self.cargo.packages {
             build.arg("--package").arg(pkg);
         }
-        if self.workspace {
+        if self.cargo.workspace {
             build.arg("--workspace");
         }
-        for item in &self.exclude {
+        for item in &self.cargo.exclude {
             build.arg("--exclude").arg(item);
         }
-        if self.all {
+        if self.cargo.all {
             build.arg("--all");
         }
         if let Some(jobs) = self.cargo.jobs {
             build.arg("--jobs").arg(jobs.to_string());
         }
-        if self.lib {
+        if self.cargo.lib {
             build.arg("--lib");
         }
-        for bin in &self.bin {
+        for bin in &self.cargo.bin {
             build.arg("--bin").arg(bin);
         }
-        if self.bins {
+        if self.cargo.bins {
             build.arg("--bins");
         }
-        for example in &self.example {
+        for example in &self.cargo.example {
             build.arg("--example").arg(example);
         }
-        if self.examples {
+        if self.cargo.examples {
             build.arg("--examples");
         }
-        for test in &self.test {
+        for test in &self.cargo.test {
             build.arg("--test").arg(test);
         }
-        if self.tests {
+        if self.cargo.tests {
             build.arg("--tests");
         }
-        for bench in &self.bench {
+        for bench in &self.cargo.bench {
             build.arg("--bench").arg(bench);
         }
-        if self.benches {
+        if self.cargo.benches {
             build.arg("--benches");
         }
-        if self.all_targets {
+        if self.cargo.all_targets {
             build.arg("--all-targets");
         }
         if self.cargo.release {
@@ -189,13 +116,13 @@ impl Build {
         if self.cargo.no_default_features {
             build.arg("--no-default-features");
         }
-        if let Some(target) = self.cargo.target.as_ref() {
+        for target in &self.cargo.target {
             build.arg("--target").arg(target);
         }
         if let Some(dir) = self.cargo.target_dir.as_ref() {
             build.arg("--target-dir").arg(dir);
         }
-        if let Some(dir) = self.out_dir.as_ref() {
+        if let Some(dir) = self.cargo.out_dir.as_ref() {
             build.arg("--out-dir").arg(dir);
         }
         if let Some(path) = self.cargo.manifest_path.as_ref() {
@@ -207,13 +134,13 @@ impl Build {
         for fmt in &self.cargo.message_format {
             build.arg("--message-format").arg(fmt);
         }
-        if self.build_plan {
+        if self.cargo.build_plan {
             build.arg("--build-plan");
         }
         if self.cargo.unit_graph {
             build.arg("--unit-graph");
         }
-        if self.future_incompat_report {
+        if self.cargo.future_incompat_report {
             build.arg("--future-incompat-report");
         }
         if self.cargo.verbose > 0 {
@@ -238,22 +165,24 @@ impl Build {
             build.arg("-Z").arg(flag);
         }
 
-        if let Some(target) = self.cargo.target.as_ref() {
+        let env_path = env::var("PATH").unwrap_or_default();
+        let mut env_paths: Vec<_> = env::split_paths(&env_path).collect();
+
+        let env_path = if cfg!(target_os = "macos") {
+            let mut new_path = env_path;
+            new_path.push_str(":/opt/homebrew/opt/llvm/bin");
+            new_path.push_str(":/usr/local/opt/llvm/bin");
+            new_path
+        } else {
+            env_path
+        };
+        let cache_dir = xwin_cache_dir.parent().unwrap();
+        env_paths.push(cache_dir.to_path_buf());
+
+        for target in &self.cargo.target {
             if target.contains("msvc") {
                 self.setup_msvc_crt(xwin_cache_dir.clone())?;
                 let env_target = target.to_lowercase().replace('-', "_");
-                let env_path = env::var("PATH").unwrap_or_default();
-                let mut env_paths: Vec<_> = env::split_paths(&env_path).collect();
-
-                let env_path = if cfg!(target_os = "macos") {
-                    let mut new_path = env_path;
-                    new_path.push_str(":/opt/homebrew/opt/llvm/bin");
-                    new_path.push_str(":/usr/local/opt/llvm/bin");
-                    new_path
-                } else {
-                    env_path
-                };
-                let cache_dir = xwin_cache_dir.parent().unwrap();
 
                 if which_in("clang-cl", Some(env_path.clone()), env::current_dir()?).is_err() {
                     if let Ok(clang) = which("clang") {
@@ -274,7 +203,7 @@ impl Build {
                         }
                     }
                 }
-                if which_in("lld-link", Some(env_path), env::current_dir()?).is_err() {
+                if which_in("lld-link", Some(env_path.clone()), env::current_dir()?).is_err() {
                     let bin_dir = rustc_target_bin_dir()?;
                     let rust_lld = bin_dir.join("rust-lld");
                     if rust_lld.exists() {
@@ -295,7 +224,6 @@ impl Build {
                         }
                     }
                 }
-                env_paths.push(cache_dir.to_path_buf());
 
                 build.env("TARGET_CC", format!("clang-cl --target={}", target));
                 build.env("TARGET_CXX", format!("clang-cl --target={}", target));
@@ -351,7 +279,7 @@ impl Build {
                     }
                 }
 
-                build.env("PATH", env::join_paths(env_paths)?);
+                build.env("PATH", env::join_paths(env_paths.clone())?);
 
                 // CMake support
                 let cmake_toolchain = self.setup_cmake_toolchain(target, &xwin_cache_dir)?;

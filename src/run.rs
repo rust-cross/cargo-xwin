@@ -4,7 +4,7 @@ use std::process;
 use anyhow::{Context, Result};
 use clap::Parser;
 
-use crate::common::{CargoOptions, XWinOptions};
+use crate::common::XWinOptions;
 use crate::Build;
 
 /// Run a binary or example of the local package
@@ -16,46 +16,27 @@ use crate::Build;
 ]
 pub struct Run {
     #[clap(flatten)]
-    pub cargo: CargoOptions,
-
-    /// Package to run (see `cargo help pkgid`)
-    #[clap(short = 'p', long = "package", value_name = "SPEC")]
-    pub packages: Option<String>,
-
-    /// Run the specified binary
-    #[clap(long, value_name = "NAME", multiple_values = true)]
-    pub bin: Vec<String>,
-
-    /// Run the specified example
-    #[clap(long, value_name = "NAME", multiple_values = true)]
-    pub example: Vec<String>,
-
-    #[clap(flatten)]
     pub xwin: XWinOptions,
 
-    /// Arguments for the binary to run
-    #[clap(takes_value = true, multiple_values = true)]
-    pub args: Vec<String>,
+    #[clap(flatten)]
+    pub cargo: cargo_options::Run,
 }
 
 impl Run {
     /// Execute `cargo run` command
     pub fn execute(&self) -> Result<()> {
         let build = Build {
-            cargo: self.cargo.clone(),
-            packages: self.packages.clone().map(|p| vec![p]).unwrap_or_default(),
-            bin: self.bin.clone(),
-            example: self.example.clone(),
+            cargo: self.cargo.clone().into(),
             xwin: self.xwin.clone(),
             ..Default::default()
         };
         let mut run = build.build_command("run")?;
-        if !self.args.is_empty() {
+        if !self.cargo.args.is_empty() {
             run.arg("--");
-            run.args(&self.args);
+            run.args(&self.cargo.args);
         }
 
-        if let Some(target) = self.cargo.target.as_ref() {
+        for target in &self.cargo.target {
             if target.contains("msvc") {
                 if env::var_os("WINEDEBUG").is_none() {
                     run.env("WINEDEBUG", "-all");
