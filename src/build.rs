@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::convert::TryInto;
 use std::env;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
@@ -26,6 +27,14 @@ pub struct Build {
 }
 
 impl Build {
+    /// Create a new build from manifest path
+    #[allow(clippy::field_reassign_with_default)]
+    pub fn new(manifest_path: Option<PathBuf>) -> Self {
+        let mut build = Self::default();
+        build.manifest_path = manifest_path;
+        build
+    }
+
     /// Execute `cargo build` command
     pub fn execute(&self) -> Result<()> {
         let mut build = self.build_command("build")?;
@@ -552,4 +561,27 @@ fn rustc_target_bin_dir() -> Result<PathBuf> {
     let lib_dir = Path::new(&stdout);
     let bin_dir = lib_dir.parent().unwrap().join("bin");
     Ok(bin_dir)
+}
+
+impl Deref for Build {
+    type Target = cargo_options::Build;
+
+    fn deref(&self) -> &Self::Target {
+        &self.cargo
+    }
+}
+
+impl DerefMut for Build {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.cargo
+    }
+}
+
+impl From<cargo_options::Build> for Build {
+    fn from(cargo: cargo_options::Build) -> Self {
+        Self {
+            cargo,
+            ..Default::default()
+        }
+    }
 }

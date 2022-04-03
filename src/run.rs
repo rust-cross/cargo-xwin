@@ -1,4 +1,6 @@
 use std::env;
+use std::ops::{Deref, DerefMut};
+use std::path::PathBuf;
 use std::process;
 
 use anyhow::{Context, Result};
@@ -23,6 +25,14 @@ pub struct Run {
 }
 
 impl Run {
+    /// Create a new run from manifest path
+    #[allow(clippy::field_reassign_with_default)]
+    pub fn new(manifest_path: Option<PathBuf>) -> Self {
+        let mut build = Self::default();
+        build.manifest_path = manifest_path;
+        build
+    }
+
     /// Execute `cargo run` command
     pub fn execute(&self) -> Result<()> {
         let build = Build {
@@ -55,5 +65,28 @@ impl Run {
             process::exit(status.code().unwrap_or(1));
         }
         Ok(())
+    }
+}
+
+impl Deref for Run {
+    type Target = cargo_options::Run;
+
+    fn deref(&self) -> &Self::Target {
+        &self.cargo
+    }
+}
+
+impl DerefMut for Run {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.cargo
+    }
+}
+
+impl From<cargo_options::Run> for Run {
+    fn from(cargo: cargo_options::Run) -> Self {
+        Self {
+            cargo,
+            ..Default::default()
+        }
     }
 }
