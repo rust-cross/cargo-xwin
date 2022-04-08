@@ -198,17 +198,19 @@ impl Build {
                         #[cfg(windows)]
                         {
                             let symlink = cache_dir.join("clang-cl.exe");
-                            if !symlink.exists() {
-                                std::os::windows::fs::symlink_file(clang, symlink)?;
+                            if symlink.exists() {
+                                fs::remove_file(&symlink)?;
                             }
+                            std::os::windows::fs::symlink_file(clang, symlink)?;
                         }
 
                         #[cfg(unix)]
                         {
                             let symlink = cache_dir.join("clang-cl");
-                            if !symlink.exists() {
-                                std::os::unix::fs::symlink(clang, symlink)?;
+                            if symlink.exists() {
+                                fs::remove_file(&symlink)?;
                             }
+                            std::os::unix::fs::symlink(clang, symlink)?;
                         }
                     }
                 }
@@ -219,17 +221,19 @@ impl Build {
                         #[cfg(windows)]
                         {
                             let symlink = cache_dir.join("lld-link.exe");
-                            if !symlink.exists() {
-                                std::os::windows::fs::symlink_file(rust_lld, symlink)?;
+                            if symlink.exists() {
+                                fs::remove_file(&symlink)?;
                             }
+                            std::os::windows::fs::symlink_file(rust_lld, symlink)?;
                         }
 
                         #[cfg(unix)]
                         {
                             let symlink = cache_dir.join("lld-link");
-                            if !symlink.exists() {
-                                std::os::unix::fs::symlink(rust_lld, symlink)?;
+                            if symlink.exists() {
+                                fs::remove_file(&symlink)?;
                             }
+                            std::os::unix::fs::symlink(rust_lld, symlink)?;
                         }
                     }
                 }
