@@ -214,8 +214,8 @@ impl Build {
                         }
                     }
                 }
-                symlink_llvm_tool("rust-lld", "lld-link", env_path.clone(), &cache_dir)?;
-                symlink_llvm_tool("llvm-ar", "llvm-lib", env_path.clone(), &cache_dir)?;
+                symlink_llvm_tool("rust-lld", "lld-link", env_path.clone(), cache_dir)?;
+                symlink_llvm_tool("llvm-ar", "llvm-lib", env_path.clone(), cache_dir)?;
 
                 build.env("TARGET_CC", format!("clang-cl --target={}", target));
                 build.env("TARGET_CXX", format!("clang-cl --target={}", target));
