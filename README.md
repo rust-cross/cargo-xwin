@@ -15,9 +15,7 @@ Cross compile Cargo project to Windows msvc target with ease.
 
 1. For pure Rust project, no prerequisites needed.
 2. For C/C++ dependencies, install [clang](https://clang.llvm.org/).
-3. For assembly dependencies, it needs `llvm-lib`, install [llvm](https://llvm.org).
-
-On macOS, run `brew install llvm` then you are good to go.
+3. For assembly dependencies, install `llvm-tools-preview` component via `rustup component add llvm-tools-preview` or install [llvm](https://llvm.org).
 
 ## Installation
 

@@ -214,29 +214,8 @@ impl Build {
                         }
                     }
                 }
-                if which_in("lld-link", Some(env_path.clone()), env::current_dir()?).is_err() {
-                    let bin_dir = rustc_target_bin_dir()?;
-                    let rust_lld = bin_dir.join("rust-lld");
-                    if rust_lld.exists() {
-                        #[cfg(windows)]
-                        {
-                            let symlink = cache_dir.join("lld-link.exe");
-                            if symlink.exists() {
-                                fs::remove_file(&symlink)?;
-                            }
-                            std::os::windows::fs::symlink_file(rust_lld, symlink)?;
-                        }
-
-                        #[cfg(unix)]
-                        {
-                            let symlink = cache_dir.join("lld-link");
-                            if symlink.exists() {
-                                fs::remove_file(&symlink)?;
-                            }
-                            std::os::unix::fs::symlink(rust_lld, symlink)?;
-                        }
-                    }
-                }
+                symlink_llvm_tool("rust-lld", "lld-link", env_path.clone(), &cache_dir)?;
+                symlink_llvm_tool("llvm-ar", "llvm-lib", env_path.clone(), &cache_dir)?;
 
                 build.env("TARGET_CC", format!("clang-cl --target={}", target));
                 build.env("TARGET_CXX", format!("clang-cl --target={}", target));
@@ -565,6 +544,39 @@ fn rustc_target_bin_dir() -> Result<PathBuf> {
     let lib_dir = Path::new(&stdout);
     let bin_dir = lib_dir.parent().unwrap().join("bin");
     Ok(bin_dir)
+}
+
+/// Symlink Rust provided llvm tool component
+fn symlink_llvm_tool(
+    tool: &str,
+    link_name: &str,
+    env_path: String,
+    cache_dir: &Path,
+) -> Result<()> {
+    if which_in(link_name, Some(env_path), env::current_dir()?).is_err() {
+        let bin_dir = rustc_target_bin_dir()?;
+        let rust_tool = bin_dir.join(tool);
+        if rust_tool.exists() {
+            #[cfg(windows)]
+            {
+                let symlink = cache_dir.join(format!("{}.exe", link_name));
+                if symlink.exists() {
+                    fs::remove_file(&symlink)?;
+                }
+                std::os::windows::fs::symlink_file(rust_tool, symlink)?;
+            }
+
+            #[cfg(unix)]
+            {
+                let symlink = cache_dir.join(link_name);
+                if symlink.exists() {
+                    fs::remove_file(&symlink)?;
+                }
+                std::os::unix::fs::symlink(rust_tool, symlink)?;
+            }
+        }
+    }
+    Ok(())
 }
 
 impl Deref for Build {
