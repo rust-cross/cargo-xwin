@@ -6,6 +6,7 @@ _formerly cargo-xwinbuild_
 [![Crates.io](https://img.shields.io/crates/v/cargo-xwin.svg)](https://crates.io/crates/cargo-xwin)
 [![docs.rs](https://docs.rs/cargo-xwin/badge.svg)](https://docs.rs/cargo-xwin/)
 [![PyPI](https://img.shields.io/pypi/v/cargo-xwin.svg)](https://pypi.org/project/cargo-xwin)
+[![Docker Image](https://img.shields.io/docker/pulls/messense/cargo-xwin.svg?maxAge=2592000)](https://hub.docker.com/r/messense/cargo-xwin/)
 
 Cross compile Cargo project to Windows msvc target with ease.
 
@@ -27,6 +28,14 @@ You can also install it using pip:
 
 ```bash
 pip install cargo-xwin
+```
+
+We also provide a [Docker image](https://hub.docker.com/r/messense/cargo-xwin) which has wine pre-installed in addition to cargo-xwin and Rust,
+for example to build for x86_64 Windows:
+
+```bash
+docker run --rm -it -v $(pwd):/io -w /io messense/cargo-xwin:main \
+  cargo xwin build --release --target x86_64-pc-windows-msvc
 ```
 
 ## Usage
