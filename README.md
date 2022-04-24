@@ -34,7 +34,7 @@ We also provide a [Docker image](https://hub.docker.com/r/messense/cargo-xwin) w
 for example to build for x86_64 Windows:
 
 ```bash
-docker run --rm -it -v $(pwd):/io -w /io messense/cargo-xwin:main \
+docker run --rm -it -v $(pwd):/io -w /io messense/cargo-xwin \
   cargo xwin build --release --target x86_64-pc-windows-msvc
 ```
 
