@@ -188,7 +188,24 @@ impl Build {
         let cache_dir = xwin_cache_dir.parent().unwrap();
         env_paths.push(cache_dir.to_path_buf());
 
-        for target in &self.cargo.target {
+        let mut targets = self.cargo.target.clone();
+        if targets.is_empty() {
+            let workdir = self
+                .cargo
+                .manifest_path
+                .as_ref()
+                .and_then(|p| p.parent().map(|x| x.to_path_buf()))
+                .or_else(|| env::current_dir().ok())
+                .unwrap();
+            if let Some(build_target) = default_build_target_from_config(&workdir)? {
+                // if no target is specified, use the default build target
+                // Note that this is required, otherwise it may fail with link errors
+                build.arg("--target").arg(&build_target);
+                targets.push(build_target);
+            }
+        }
+
+        for target in &targets {
             if target.contains("msvc") {
                 self.setup_msvc_crt(xwin_cache_dir.clone())?;
                 let env_target = target.to_lowercase().replace('-', "_");
@@ -544,6 +561,28 @@ fn rustc_target_bin_dir() -> Result<PathBuf> {
     let lib_dir = Path::new(&stdout);
     let bin_dir = lib_dir.parent().unwrap().join("bin");
     Ok(bin_dir)
+}
+
+fn default_build_target_from_config(workdir: &Path) -> Result<Option<String>> {
+    let output = Command::new("cargo")
+        .current_dir(workdir)
+        .args(&[
+            "config",
+            "get",
+            "-Z",
+            "unstable-options",
+            "--format",
+            "json-value",
+            "build.target",
+        ])
+        .env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly")
+        .output()?;
+    if !output.status.success() {
+        return Ok(None);
+    }
+    let stdout = String::from_utf8(output.stdout)?;
+    let target = stdout.trim().trim_matches('"');
+    Ok(Some(target.to_string()))
 }
 
 /// Symlink Rust provided llvm tool component

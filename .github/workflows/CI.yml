@@ -77,9 +77,10 @@ jobs:
           rustup target add x86_64-pc-windows-msvc
 
           cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/libhello/Cargo.toml
-          cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
           cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/hello-tls/Cargo.toml
           cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/hello-rustls/Cargo.toml
+          # Test using default build target from config
+          cargo run --release xwin build --manifest-path tests/hello-windows/Cargo.toml
           # Test CMake support
           cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/crfsuite-rs/Cargo.toml
       - name: xwin run - x86_64

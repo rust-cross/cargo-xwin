@@ -106,6 +106,7 @@ dependencies = [
  "clap",
  "dirs",
  "fs-err",
+ "indicatif",
  "path-slash",
  "which",
  "xwin",
