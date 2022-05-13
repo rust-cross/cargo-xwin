@@ -6,6 +6,9 @@ use clap::{Parser, Subcommand};
 pub enum Cli {
     #[clap(subcommand, name = "xwin")]
     Opt(Opt),
+    // flatten opt here so that `cargo-xwin build` also works
+    #[clap(flatten)]
+    Cargo(Opt),
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -23,7 +26,7 @@ pub enum Opt {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli {
-        Cli::Opt(opt) => match opt {
+        Cli::Opt(opt) | Cli::Cargo(opt) => match opt {
             Opt::Build(build) => build.execute()?,
             Opt::Run(run) => run.execute()?,
             Opt::Test(test) => test.execute()?,
