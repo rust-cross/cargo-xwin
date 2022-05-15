@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 
 /// common xwin options
-#[derive(Clone, Debug, Default, Parser)]
+#[derive(Clone, Debug, Parser)]
 pub struct XWinOptions {
     /// xwin cache directory
     #[clap(long, parse(from_os_str), env = "XWIN_CACHE_DIR", hide = true)]
@@ -35,4 +35,15 @@ pub struct XWinOptions {
     /// a "<major>.<minor>" version.
     #[clap(long, env = "XWIN_VERSION", default_value = "16", hide = true)]
     pub xwin_version: String,
+}
+
+impl Default for XWinOptions {
+    fn default() -> Self {
+        Self {
+            xwin_cache_dir: None,
+            xwin_arch: vec![xwin::Arch::X86_64, xwin::Arch::Aarch64],
+            xwin_variant: vec![xwin::Variant::Desktop],
+            xwin_version: "16".to_string(),
+        }
+    }
 }
