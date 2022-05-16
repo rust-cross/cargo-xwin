@@ -19,4 +19,12 @@ fs-err = "2.7.0"
 indicatif = "0.17.0-rc.6"
 path-slash = "0.1.4"
 which = "4.2.4"
-xwin = "0.2.0"
+xwin = { version = "0.2.2", default-features = false }
+
+[features]
+# By default we use rustls for TLS
+default = ["rustls-tls"]
+rustls-tls = ["xwin/rustls-tls"]
+# If this feature is enabled we instead use the native TLS implementation for the
+# target platform
+native-tls = ["xwin/native-tls"]
