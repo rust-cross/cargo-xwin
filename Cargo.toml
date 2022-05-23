@@ -19,7 +19,7 @@ fs-err = "2.7.0"
 indicatif = "0.17.0-rc.6"
 path-slash = "0.1.4"
 which = "4.2.4"
-xwin = { version = "0.2.3", default-features = false }
+xwin = { version = "0.2.4", default-features = false }
 
 [features]
 # By default we use rustls for TLS
