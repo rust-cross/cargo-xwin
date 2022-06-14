@@ -7,7 +7,6 @@ use anyhow::{Context, Result};
 use clap::Parser;
 
 use crate::common::XWinOptions;
-use crate::Build;
 
 /// Run a binary or example of the local package
 #[derive(Clone, Debug, Default, Parser)]
@@ -35,16 +34,8 @@ impl Run {
 
     /// Execute `cargo run` command
     pub fn execute(&self) -> Result<()> {
-        let build = Build {
-            cargo: self.cargo.clone().into(),
-            xwin: self.xwin.clone(),
-            ..Default::default()
-        };
-        let mut run = build.build_command("run")?;
-        if !self.cargo.args.is_empty() {
-            run.arg("--");
-            run.args(&self.cargo.args);
-        }
+        let mut run = self.cargo.command();
+        self.xwin.apply_command_env(&self.cargo.common, &mut run)?;
 
         for target in &self.cargo.target {
             if target.contains("msvc") {
