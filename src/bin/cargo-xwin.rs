@@ -1,4 +1,4 @@
-use cargo_xwin::{Build, Run, Test};
+use cargo_xwin::{Build, Run, Rustc, Test};
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
@@ -19,6 +19,8 @@ pub enum Opt {
     Build(Build),
     #[clap(name = "run")]
     Run(Run),
+    #[clap(name = "rustc")]
+    Rustc(Rustc),
     #[clap(name = "test")]
     Test(Test),
 }
@@ -29,6 +31,7 @@ fn main() -> anyhow::Result<()> {
         Cli::Opt(opt) | Cli::Cargo(opt) => match opt {
             Opt::Build(build) => build.execute()?,
             Opt::Run(run) => run.execute()?,
+            Opt::Rustc(rustc) => rustc.execute()?,
             Opt::Test(test) => test.execute()?,
         },
     }

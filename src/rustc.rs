@@ -1,24 +1,28 @@
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
-use std::process::{self, Command};
+use std::process;
 
 use anyhow::{Context, Result};
 use clap::Parser;
 
 use crate::common::XWinOptions;
 
-/// Compile a local package and all of its dependencies
+/// Compile a package, and pass extra options to the compiler
 #[derive(Clone, Debug, Default, Parser)]
-#[clap(setting = clap::AppSettings::DeriveDisplayOrder, after_help = "Run `cargo help build` for more detailed information.")]
-pub struct Build {
-    #[clap(flatten)]
-    pub cargo: cargo_options::Build,
-
+#[clap(
+    setting = clap::AppSettings::DeriveDisplayOrder,
+    trailing_var_arg = true,
+    after_help = "Run `cargo help rustc` for more detailed information."
+)]
+pub struct Rustc {
     #[clap(flatten)]
     pub xwin: XWinOptions,
+
+    #[clap(flatten)]
+    pub cargo: cargo_options::Rustc,
 }
 
-impl Build {
+impl Rustc {
     /// Create a new build from manifest path
     #[allow(clippy::field_reassign_with_default)]
     pub fn new(manifest_path: Option<PathBuf>) -> Self {
@@ -27,42 +31,37 @@ impl Build {
         build
     }
 
-    /// Execute `cargo build` command
+    /// Execute `cargo rustc` command with zig as the linker
     pub fn execute(&self) -> Result<()> {
-        let mut build = self.build_command()?;
-        let mut child = build.spawn().context("Failed to run cargo build")?;
+        let mut rustc = self.cargo.command();
+        self.xwin
+            .apply_command_env(&self.cargo.common, &mut rustc)?;
+
+        let mut child = rustc.spawn().context("Failed to run cargo rustc")?;
         let status = child.wait().expect("Failed to wait on cargo build process");
         if !status.success() {
             process::exit(status.code().unwrap_or(1));
         }
         Ok(())
     }
-
-    /// Generate cargo subcommand
-    pub fn build_command(&self) -> Result<Command> {
-        let mut build = self.cargo.command();
-        self.xwin
-            .apply_command_env(&self.cargo.common, &mut build)?;
-        Ok(build)
-    }
 }
 
-impl Deref for Build {
-    type Target = cargo_options::Build;
+impl Deref for Rustc {
+    type Target = cargo_options::Rustc;
 
     fn deref(&self) -> &Self::Target {
         &self.cargo
     }
 }
 
-impl DerefMut for Build {
+impl DerefMut for Rustc {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.cargo
     }
 }
 
-impl From<cargo_options::Build> for Build {
-    fn from(cargo: cargo_options::Build) -> Self {
+impl From<cargo_options::Rustc> for Rustc {
+    fn from(cargo: cargo_options::Rustc) -> Self {
         Self {
             cargo,
             ..Default::default()
