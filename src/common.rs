@@ -222,8 +222,11 @@ impl XWinOptions {
 
         let draw_target = ProgressTarget::Stdout;
 
-        let xwin_dir = adjust_canonicalization(cache_dir.display().to_string());
-        let ctx = xwin::Ctx::with_dir(xwin::PathBuf::from(xwin_dir), draw_target)?;
+        let xwin_dir = dunce::simplified(&cache_dir).to_path_buf();
+        let ctx = xwin::Ctx::with_dir(
+            xwin::PathBuf::from_path_buf(xwin_dir).expect("cache dir path is not valid unicode"),
+            draw_target,
+        )?;
         let ctx = std::sync::Arc::new(ctx);
         let pkg_manifest = self.load_manifest(&ctx, draw_target)?;
 
@@ -420,26 +423,11 @@ set(CMAKE_USER_MAKE_RULES_OVERRIDE "${{CMAKE_CURRENT_LIST_DIR}}/override.cmake")
         "#,
             target = target,
             processor = processor,
-            xwin_dir = adjust_canonicalization(xwin_cache_dir.to_slash_lossy()),
+            xwin_dir = dunce::simplified(Path::new(&xwin_cache_dir.to_slash_lossy())).display(),
             xwin_arch = xwin_arch,
         );
         fs::write(&toolchain_file, &content)?;
         Ok(toolchain_file)
-    }
-}
-
-#[cfg(target_family = "unix")]
-pub fn adjust_canonicalization(p: String) -> String {
-    p
-}
-
-#[cfg(target_os = "windows")]
-pub fn adjust_canonicalization(p: String) -> String {
-    const VERBATIM_PREFIX: &str = r#"\\?\"#;
-    if p.starts_with(VERBATIM_PREFIX) {
-        p[VERBATIM_PREFIX.len()..].to_string()
-    } else {
-        p
     }
 }
 
