@@ -1,7 +1,7 @@
 use std::env;
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
-use std::process;
+use std::process::{self, Command};
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -34,8 +34,7 @@ impl Run {
 
     /// Execute `cargo run` command
     pub fn execute(&self) -> Result<()> {
-        let mut run = self.cargo.command();
-        self.xwin.apply_command_env(&self.cargo.common, &mut run)?;
+        let mut run = self.build_command()?;
 
         for target in &self.cargo.target {
             if target.contains("msvc") {
@@ -56,6 +55,14 @@ impl Run {
             process::exit(status.code().unwrap_or(1));
         }
         Ok(())
+    }
+
+    /// Generate cargo subcommand
+    pub fn build_command(&self) -> Result<Command> {
+        let mut build = self.cargo.command();
+        self.xwin
+            .apply_command_env(&self.cargo.common, &mut build)?;
+        Ok(build)
     }
 }
 
