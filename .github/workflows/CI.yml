@@ -40,7 +40,7 @@ jobs:
       - name: Install dependencies
         if: matrix.os == 'macos-latest'
         run: |
-          brew install gnu-tar
+          brew install gnu-tar llvm
           echo "/usr/local/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
       - name: Install dependencies
         if: matrix.os == 'ubuntu-latest'
