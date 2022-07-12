@@ -15,13 +15,13 @@ pub enum Cli {
 #[derive(Debug, Subcommand)]
 #[clap(version, global_setting(clap::AppSettings::DeriveDisplayOrder))]
 pub enum Opt {
-    #[clap(name = "build")]
+    #[clap(name = "build", alias = "b")]
     Build(Build),
-    #[clap(name = "run")]
+    #[clap(name = "run", alias = "r")]
     Run(Run),
     #[clap(name = "rustc")]
     Rustc(Rustc),
-    #[clap(name = "test")]
+    #[clap(name = "test", alias = "t")]
     Test(Test),
 }
 
