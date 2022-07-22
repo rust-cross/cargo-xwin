@@ -420,7 +420,7 @@ set(CMAKE_USER_MAKE_RULES_OVERRIDE "${{CMAKE_CURRENT_LIST_DIR}}/override.cmake")
         "#,
             target = target,
             processor = processor,
-            xwin_dir = adjust_canonicalization(xwin_cache_dir.to_slash_lossy()),
+            xwin_dir = adjust_canonicalization(xwin_cache_dir.to_slash_lossy().to_string()),
             xwin_arch = xwin_arch,
         );
         fs::write(&toolchain_file, &content)?;
