@@ -1,3 +1,5 @@
+use anyhow::Context;
+use cargo_options::Metadata;
 use cargo_xwin::{Build, Run, Rustc, Test};
 use clap::{Parser, Subcommand};
 
@@ -17,6 +19,8 @@ pub enum Cli {
 pub enum Opt {
     #[clap(name = "build", alias = "b")]
     Build(Build),
+    #[clap(name = "metadata")]
+    Metadata(Metadata),
     #[clap(name = "run", alias = "r")]
     Run(Run),
     #[clap(name = "rustc")]
@@ -30,6 +34,16 @@ fn main() -> anyhow::Result<()> {
     match cli {
         Cli::Opt(opt) | Cli::Cargo(opt) => match opt {
             Opt::Build(build) => build.execute()?,
+            Opt::Metadata(metadata) => {
+                let mut cmd = metadata.command();
+                let mut child = cmd.spawn().context("Failed to run cargo metadata")?;
+                let status = child
+                    .wait()
+                    .expect("Failed to wait on cargo metadata process");
+                if !status.success() {
+                    std::process::exit(status.code().unwrap_or(1));
+                }
+            }
             Opt::Run(run) => run.execute()?,
             Opt::Rustc(rustc) => rustc.execute()?,
             Opt::Test(test) => test.execute()?,
