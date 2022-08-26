@@ -16,10 +16,10 @@ cargo-options = "0.3.1"
 clap = { version = "3.1.2", features = ["derive", "env", "wrap_help"] }
 dirs = "4.0.0"
 fs-err = "2.7.0"
-indicatif = "0.17.0-rc.6"
+indicatif = "0.17.0"
 path-slash = "0.2.0"
 which = "4.2.4"
-xwin = { version = "0.2.4", default-features = false }
+xwin = { version = "0.2.6", default-features = false }
 
 [features]
 # By default we use rustls for TLS

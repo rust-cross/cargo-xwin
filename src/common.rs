@@ -277,7 +277,7 @@ impl XWinOptions {
             };
 
             let pb = mp.add(
-                ProgressBar::with_draw_target(0, draw_target.into()).with_prefix(prefix).with_style(
+                ProgressBar::with_draw_target(Some(0), draw_target.into()).with_prefix(prefix).with_style(
                     ProgressStyle::default_bar()
                         .template("{spinner:.green} {prefix:.bold} [{elapsed}] {wide_bar:.green} {bytes}/{total_bytes} {msg}").unwrap()
                         .progress_chars("=> "),
@@ -316,7 +316,7 @@ impl XWinOptions {
         ctx: &xwin::Ctx,
         dt: ProgressTarget,
     ) -> Result<xwin::manifest::PackageManifest> {
-        let manifest_pb = ProgressBar::with_draw_target(0, dt.into())
+        let manifest_pb = ProgressBar::with_draw_target(Some(0), dt.into())
             .with_style(
             ProgressStyle::default_bar()
                 .template(
