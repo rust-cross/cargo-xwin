@@ -108,7 +108,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-xwin"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "anyhow",
  "cargo-options",
