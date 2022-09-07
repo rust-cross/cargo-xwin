@@ -235,7 +235,7 @@ impl XWinOptions {
             .xwin_variant
             .iter()
             .fold(0, |acc, var| acc | *var as u32);
-        let pruned = xwin::prune_pkg_list(&pkg_manifest, arches, variants)?;
+        let pruned = xwin::prune_pkg_list(&pkg_manifest, arches, variants, false)?;
         let op = xwin::Ops::Splat(xwin::SplatConfig {
             include_debug_libs: false,
             include_debug_symbols: false,
@@ -252,11 +252,18 @@ impl XWinOptions {
         .map(|pay| {
             let prefix = match pay.kind {
                 xwin::PayloadKind::CrtHeaders => "CRT.headers".to_owned(),
+                xwin::PayloadKind::AtlHeaders => "ATL.headers".to_owned(),
                 xwin::PayloadKind::CrtLibs => {
                     format!(
                         "CRT.libs.{}.{}",
                         pay.target_arch.map(|ta| ta.as_str()).unwrap_or("all"),
                         pay.variant.map(|v| v.as_str()).unwrap_or("none")
+                    )
+                }
+                xwin::PayloadKind::AtlLibs => {
+                    format!(
+                        "ATL.libs.{}",
+                        pay.target_arch.map(|ta| ta.as_str()).unwrap_or("all"),
                     )
                 }
                 xwin::PayloadKind::SdkHeaders => {
