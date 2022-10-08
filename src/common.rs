@@ -23,7 +23,7 @@ pub struct XWinOptions {
     #[clap(
         long,
         env = "XWIN_ARCH",
-        value_parser = ["x86", "x86_64", "aarch", "aarch64"],
+        possible_values = &["x86", "x86_64", "aarch", "aarch64"],
         use_value_delimiter = true,
         default_value = "x86_64,aarch64",
         hide = true,
@@ -34,7 +34,7 @@ pub struct XWinOptions {
     #[clap(
         long,
         env = "XWIN_VARIANT",
-        value_parser = ["desktop", "onecore", /*"store",*/ "spectre"],
+        possible_values = &["desktop", "onecore", /*"store",*/ "spectre"],
         use_value_delimiter = true,
         default_value = "desktop",
         hide = true,
