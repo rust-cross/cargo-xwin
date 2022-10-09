@@ -5,7 +5,10 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context, Result};
-use clap::Parser;
+use clap::{
+    builder::{PossibleValuesParser, TypedValueParser as _},
+    Parser,
+};
 use fs_err as fs;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use path_slash::PathExt;
@@ -23,9 +26,10 @@ pub struct XWinOptions {
     #[clap(
         long,
         env = "XWIN_ARCH",
-        possible_values = &["x86", "x86_64", "aarch", "aarch64"],
+        value_parser = PossibleValuesParser::new(["x86", "x86_64", "aarch", "aarch64"])
+            .map(|s| s.parse::<xwin::Arch>().unwrap()),
         use_value_delimiter = true,
-        default_value = "x86_64,aarch64",
+        default_values_t = vec![xwin::Arch::X86_64, xwin::Arch::Aarch64],
         hide = true,
     )]
     pub xwin_arch: Vec<xwin::Arch>,
@@ -34,9 +38,10 @@ pub struct XWinOptions {
     #[clap(
         long,
         env = "XWIN_VARIANT",
-        possible_values = &["desktop", "onecore", /*"store",*/ "spectre"],
+        value_parser = PossibleValuesParser::new(["desktop", "onecore", /*"store",*/ "spectre"])
+            .map(|s| s.parse::<xwin::Variant>().unwrap()),
         use_value_delimiter = true,
-        default_value = "desktop",
+        default_values_t = vec![xwin::Variant::Desktop],
         hide = true,
     )]
     pub xwin_variant: Vec<xwin::Variant>,
