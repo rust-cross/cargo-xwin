@@ -10,16 +10,15 @@ use crate::common::XWinOptions;
 
 /// Run a binary or example of the local package
 #[derive(Clone, Debug, Default, Parser)]
-#[clap(
-    setting = clap::AppSettings::DeriveDisplayOrder,
-    trailing_var_arg = true,
-    after_help = "Run `cargo help run` for more detailed information.")
-]
+#[command(
+    display_order = 1,
+    after_help = "Run `cargo help run` for more detailed information."
+)]
 pub struct Run {
-    #[clap(flatten)]
+    #[command(flatten)]
     pub xwin: XWinOptions,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cargo: cargo_options::Run,
 }
 

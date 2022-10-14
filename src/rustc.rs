@@ -9,16 +9,15 @@ use crate::common::XWinOptions;
 
 /// Compile a package, and pass extra options to the compiler
 #[derive(Clone, Debug, Default, Parser)]
-#[clap(
-    setting = clap::AppSettings::DeriveDisplayOrder,
-    trailing_var_arg = true,
+#[command(
+    display_order = 1,
     after_help = "Run `cargo help rustc` for more detailed information."
 )]
 pub struct Rustc {
-    #[clap(flatten)]
+    #[command(flatten)]
     pub xwin: XWinOptions,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cargo: cargo_options::Rustc,
 }
 

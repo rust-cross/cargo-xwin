@@ -10,16 +10,15 @@ use crate::common::XWinOptions;
 
 /// Execute all unit and integration tests and build examples of a local package
 #[derive(Clone, Debug, Default, Parser)]
-#[clap(
-    setting = clap::AppSettings::DeriveDisplayOrder,
-    trailing_var_arg = true,
-    after_help = "Run `cargo help test` for more detailed information.\nRun `cargo test -- --help` for test binary options.")
-]
+#[command(
+    display_order = 1,
+    after_help = "Run `cargo help test` for more detailed information.\nRun `cargo test -- --help` for test binary options."
+)]
 pub struct Test {
-    #[clap(flatten)]
+    #[command(flatten)]
     pub xwin: XWinOptions,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cargo: cargo_options::Test,
 }
 

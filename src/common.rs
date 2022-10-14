@@ -19,28 +19,28 @@ use xwin::util::ProgressTarget;
 #[derive(Clone, Debug, Parser)]
 pub struct XWinOptions {
     /// xwin cache directory
-    #[clap(long, value_parser, env = "XWIN_CACHE_DIR", hide = true)]
+    #[arg(long, env = "XWIN_CACHE_DIR", hide = true)]
     pub xwin_cache_dir: Option<PathBuf>,
 
     /// The architectures to include in CRT/SDK
-    #[clap(
+    #[arg(
         long,
         env = "XWIN_ARCH",
         value_parser = PossibleValuesParser::new(["x86", "x86_64", "aarch", "aarch64"])
             .map(|s| s.parse::<xwin::Arch>().unwrap()),
-        use_value_delimiter = true,
+        value_delimiter = ',',
         default_values_t = vec![xwin::Arch::X86_64, xwin::Arch::Aarch64],
         hide = true,
     )]
     pub xwin_arch: Vec<xwin::Arch>,
 
     /// The variants to include
-    #[clap(
+    #[arg(
         long,
         env = "XWIN_VARIANT",
         value_parser = PossibleValuesParser::new(["desktop", "onecore", /*"store",*/ "spectre"])
             .map(|s| s.parse::<xwin::Variant>().unwrap()),
-        use_value_delimiter = true,
+        value_delimiter = ',',
         default_values_t = vec![xwin::Variant::Desktop],
         hide = true,
     )]
@@ -48,7 +48,7 @@ pub struct XWinOptions {
 
     /// The version to retrieve, can either be a major version of 15 or 16, or
     /// a "<major>.<minor>" version.
-    #[clap(long, env = "XWIN_VERSION", default_value = "16", hide = true)]
+    #[arg(long, env = "XWIN_VERSION", default_value = "16", hide = true)]
     pub xwin_version: String,
 }
 
