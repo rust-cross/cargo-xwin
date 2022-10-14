@@ -4,28 +4,28 @@ use cargo_xwin::{Build, Run, Rustc, Test};
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
-#[clap(version, name = "cargo-xwin")]
+#[command(version, name = "cargo-xwin")]
 pub enum Cli {
-    #[clap(subcommand, name = "xwin")]
+    #[command(subcommand, name = "xwin")]
     Opt(Opt),
     // flatten opt here so that `cargo-xwin build` also works
-    #[clap(flatten)]
+    #[command(flatten)]
     Cargo(Opt),
 }
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Subcommand)]
-#[clap(version, global_setting(clap::AppSettings::DeriveDisplayOrder))]
+#[command(version, display_order = 1)]
 pub enum Opt {
-    #[clap(name = "build", alias = "b")]
+    #[command(name = "build", alias = "b")]
     Build(Build),
-    #[clap(name = "metadata")]
+    #[command(name = "metadata")]
     Metadata(Metadata),
-    #[clap(name = "run", alias = "r")]
+    #[command(name = "run", alias = "r")]
     Run(Run),
-    #[clap(name = "rustc")]
+    #[command(name = "rustc")]
     Rustc(Rustc),
-    #[clap(name = "test", alias = "t")]
+    #[command(name = "test", alias = "t")]
     Test(Test),
 }
 

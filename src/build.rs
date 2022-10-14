@@ -9,12 +9,15 @@ use crate::common::XWinOptions;
 
 /// Compile a local package and all of its dependencies
 #[derive(Clone, Debug, Default, Parser)]
-#[clap(setting = clap::AppSettings::DeriveDisplayOrder, after_help = "Run `cargo help build` for more detailed information.")]
+#[command(
+    display_order = 1,
+    after_help = "Run `cargo help build` for more detailed information."
+)]
 pub struct Build {
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cargo: cargo_options::Build,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub xwin: XWinOptions,
 }
 
