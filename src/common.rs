@@ -212,7 +212,7 @@ impl XWinOptions {
             .collect();
         let mut downloaded_arches = HashSet::new();
         if let Ok(content) = fs::read_to_string(&done_mark_file) {
-            for arch in content.trim().split_whitespace() {
+            for arch in content.split_whitespace() {
                 downloaded_arches.insert(arch.to_string());
             }
         }
