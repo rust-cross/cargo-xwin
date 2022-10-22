@@ -139,16 +139,10 @@ impl XWinOptions {
                 symlink_llvm_tool("llvm-ar", "llvm-lib", env_path.clone(), cache_dir)?;
                 symlink_llvm_tool("llvm-ar", "llvm-dlltool", env_path.clone(), cache_dir)?;
 
-                cmd.env("TARGET_CC", format!("clang-cl --target={}", target));
-                cmd.env("TARGET_CXX", format!("clang-cl --target={}", target));
-                cmd.env(
-                    format!("CC_{}", env_target),
-                    format!("clang-cl --target={}", target),
-                );
-                cmd.env(
-                    format!("CXX_{}", env_target),
-                    format!("clang-cl --target={}", target),
-                );
+                cmd.env("TARGET_CC", "clang-cl");
+                cmd.env("TARGET_CXX", "clang-cl");
+                cmd.env(format!("CC_{}", env_target), "clang-cl");
+                cmd.env(format!("CXX_{}", env_target), "clang-cl");
                 cmd.env("TARGET_AR", "llvm-lib");
                 cmd.env(format!("AR_{}", env_target), "llvm-lib");
 
@@ -158,7 +152,8 @@ impl XWinOptions {
                 );
 
                 let cl_flags = format!(
-                    "-Wno-unused-command-line-argument -fuse-ld=lld-link /imsvc{dir}/crt/include /imsvc{dir}/sdk/include/ucrt /imsvc{dir}/sdk/include/um /imsvc{dir}/sdk/include/shared",
+                    "--target={target} -Wno-unused-command-line-argument -fuse-ld=lld-link /imsvc{dir}/crt/include /imsvc{dir}/sdk/include/ucrt /imsvc{dir}/sdk/include/um /imsvc{dir}/sdk/include/shared",
+                    target = target,
                     dir = xwin_cache_dir.display()
                 );
                 cmd.env("CL_FLAGS", &cl_flags);
@@ -217,7 +212,7 @@ impl XWinOptions {
             .collect();
         let mut downloaded_arches = HashSet::new();
         if let Ok(content) = fs::read_to_string(&done_mark_file) {
-            for arch in content.trim().split_whitespace() {
+            for arch in content.split_whitespace() {
                 downloaded_arches.insert(arch.to_string());
             }
         }
