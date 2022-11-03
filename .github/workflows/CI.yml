@@ -17,15 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --all
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo check --all
 
   test:
     name: Test Suite
@@ -56,13 +49,11 @@ jobs:
       - name: Install Clang
         if: matrix.os == 'windows-latest'
         run: choco install -y llvm
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         id: rustup
         with:
-          profile: minimal
           toolchain: ${{ matrix.toolchain }}
           components: llvm-tools-preview
-          override: true
       - name: Cache cargo build
         uses: Swatinem/rust-cache@v1
       - name: Cache test crates cargo build
@@ -72,11 +63,8 @@ jobs:
             tests/hello-tls/target
             tests/hello-windows/target
             tests/libhello/target
-          key: test-crates-${{ runner.os }}-${{ steps.rustup.outputs.rustc_hash }}-${{ hashFiles('tests/*/Cargo.lock') }}
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release
+          key: test-crates-${{ runner.os }}-${{ steps.rustup.outputs.cachekey }}-${{ hashFiles('tests/*/Cargo.lock') }}
+      - run: cargo build --release
       - name: xwin build - x86_64
         run: |
           rustup target add x86_64-pc-windows-msvc
@@ -111,32 +99,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
           components: rustfmt
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - run: cargo fmt --all -- --check
 
-  clippy_check:
-    name: Clippy Check
+  clippy:
+    name: Clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
           components: clippy
-          override: true
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features
+      - run: cargo clippy --all-features
 
   spellcheck:
     name: spellcheck
