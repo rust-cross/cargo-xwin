@@ -235,7 +235,7 @@ impl XWinOptions {
             .xwin_variant
             .iter()
             .fold(0, |acc, var| acc | *var as u32);
-        let pruned = xwin::prune_pkg_list(&pkg_manifest, arches, variants)?;
+        let pruned = xwin::prune_pkg_list(&pkg_manifest, arches, variants, false)?;
         let op = xwin::Ops::Splat(xwin::SplatConfig {
             include_debug_libs: false,
             include_debug_symbols: false,
@@ -252,11 +252,18 @@ impl XWinOptions {
         .map(|pay| {
             let prefix = match pay.kind {
                 xwin::PayloadKind::CrtHeaders => "CRT.headers".to_owned(),
+                xwin::PayloadKind::AtlHeaders => "ATL.headers".to_owned(),
                 xwin::PayloadKind::CrtLibs => {
                     format!(
                         "CRT.libs.{}.{}",
                         pay.target_arch.map(|ta| ta.as_str()).unwrap_or("all"),
                         pay.variant.map(|v| v.as_str()).unwrap_or("none")
+                    )
+                }
+                xwin::PayloadKind::AtlLibs => {
+                    format!(
+                        "ATL.libs.{}",
+                        pay.target_arch.map(|ta| ta.as_str()).unwrap_or("all"),
                     )
                 }
                 xwin::PayloadKind::SdkHeaders => {
@@ -277,7 +284,7 @@ impl XWinOptions {
             };
 
             let pb = mp.add(
-                ProgressBar::with_draw_target(0, draw_target.into()).with_prefix(prefix).with_style(
+                ProgressBar::with_draw_target(Some(0), draw_target.into()).with_prefix(prefix).with_style(
                     ProgressStyle::default_bar()
                         .template("{spinner:.green} {prefix:.bold} [{elapsed}] {wide_bar:.green} {bytes}/{total_bytes} {msg}").unwrap()
                         .progress_chars("=> "),
@@ -316,7 +323,7 @@ impl XWinOptions {
         ctx: &xwin::Ctx,
         dt: ProgressTarget,
     ) -> Result<xwin::manifest::PackageManifest> {
-        let manifest_pb = ProgressBar::with_draw_target(0, dt.into())
+        let manifest_pb = ProgressBar::with_draw_target(Some(0), dt.into())
             .with_style(
             ProgressStyle::default_bar()
                 .template(
