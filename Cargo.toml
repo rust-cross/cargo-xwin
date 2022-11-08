@@ -17,7 +17,7 @@ cargo-options = "0.5.2"
 clap = { version = "4.0.0", features = ["derive", "env", "wrap_help"] }
 dirs = "4.0.0"
 fs-err = "2.7.0"
-indicatif = "0.17.0"
+indicatif = "0.17.2"
 path-slash = "0.2.0"
 which = "4.2.4"
 xwin = { version = "0.2.8", default-features = false }
