@@ -1,4 +1,4 @@
-ARG RUST_VERSION=1.64.0
+ARG RUST_VERSION=1.65.0
 
 FROM rust:$RUST_VERSION as builder
 
@@ -26,7 +26,7 @@ RUN set -eux; \
     # though we are only going be running x86_64 executables. We could also
     # build from source, but that is out of scope.
     dpkg --add-architecture i386; \
-    apt-get update && apt-get install --no-install-recommends -y clang winehq-staging; \
+    apt-get update && apt-get install --no-install-recommends -y clang winehq-staging cmake ninja-build; \
     apt-get remove -y --auto-remove; \
     rm -rf /var/lib/apt/lists/*;
 
