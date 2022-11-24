@@ -7,7 +7,7 @@ license = "MIT"
 keywords = ["windows", "cargo", "msvc"]
 readme = "README.md"
 repository = "https://github.com/messense/cargo-xwin"
-rust-version = "1.61"
+rust-version = "1.62"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -20,7 +20,7 @@ fs-err = "2.7.0"
 indicatif = "0.17.2"
 path-slash = "0.2.0"
 which = "4.2.4"
-xwin = { version = "=0.2.8", default-features = false }
+xwin = { version = "0.2.9", default-features = false }
 
 [features]
 # By default we use rustls for TLS
