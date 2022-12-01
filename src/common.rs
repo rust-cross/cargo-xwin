@@ -160,6 +160,14 @@ impl XWinOptions {
                 cmd.env(format!("CFLAGS_{}", env_target), &cl_flags);
                 cmd.env(format!("CXXFLAGS_{}", env_target), &cl_flags);
 
+                cmd.env(
+                    format!("BINDGEN_EXTRA_CLANG_ARGS_{}", env_target), 
+                    format!(
+                        "-I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared",
+                        dir = xwin_cache_dir.display()
+                    )
+                );
+
                 let target_arch = target
                     .split_once('-')
                     .map(|(x, _)| x)
