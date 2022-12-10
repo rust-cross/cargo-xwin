@@ -2,7 +2,7 @@
 
 _formerly cargo-xwinbuild_
 
-[![CI](https://github.com/messense/cargo-xwin/workflows/CI/badge.svg)](https://github.com/messense/cargo-xwin/actions?query=workflow%3ACI)
+[![CI](https://github.com/rust-cross/cargo-xwin/workflows/CI/badge.svg)](https://github.com/rust-cross/cargo-xwin/actions?query=workflow%3ACI)
 [![Crates.io](https://img.shields.io/crates/v/cargo-xwin.svg)](https://crates.io/crates/cargo-xwin)
 [![docs.rs](https://docs.rs/cargo-xwin/badge.svg)](https://docs.rs/cargo-xwin/)
 [![PyPI](https://img.shields.io/pypi/v/cargo-xwin.svg)](https://pypi.org/project/cargo-xwin)
