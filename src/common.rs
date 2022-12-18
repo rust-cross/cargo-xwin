@@ -438,7 +438,7 @@ set(CMAKE_USER_MAKE_RULES_OVERRIDE "${{CMAKE_CURRENT_LIST_DIR}}/override.cmake")
             xwin_dir = adjust_canonicalization(xwin_cache_dir.to_slash_lossy().to_string()),
             xwin_arch = xwin_arch,
         );
-        fs::write(&toolchain_file, &content)?;
+        fs::write(&toolchain_file, content)?;
         Ok(toolchain_file)
     }
 }
@@ -460,7 +460,7 @@ pub fn adjust_canonicalization(p: String) -> String {
 
 fn rustc_target_bin_dir() -> Result<PathBuf> {
     let output = Command::new("rustc")
-        .args(&["--print", "target-libdir"])
+        .args(["--print", "target-libdir"])
         .output()?;
     let stdout = String::from_utf8(output.stdout)?;
     let lib_dir = Path::new(&stdout);
@@ -504,7 +504,7 @@ fn symlink_llvm_tool(
 fn default_build_target_from_config(workdir: &Path) -> Result<Option<String>> {
     let output = Command::new("cargo")
         .current_dir(workdir)
-        .args(&[
+        .args([
             "config",
             "get",
             "-Z",
