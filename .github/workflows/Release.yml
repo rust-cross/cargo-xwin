@@ -170,6 +170,7 @@ jobs:
     name: Build Docker Image
     runs-on: ubuntu-latest
     environment: Docker Hub
+    if: ${{ github.event_name != 'pull_request' }}
     steps:
       - uses: actions/checkout@v2
       - name: Docker meta
