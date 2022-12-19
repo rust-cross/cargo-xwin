@@ -151,14 +151,33 @@ impl XWinOptions {
                     "lld-link",
                 );
 
+                let user_set_cl_flags = env::var("CL_FLAGS").unwrap_or_default();
+                let user_set_c_flags = env::var("CFLAGS").unwrap_or_default();
+                let user_set_cxx_flags = env::var("CXXFLAGS").unwrap_or_default();
+
                 let cl_flags = format!(
-                    "--target={target} -Wno-unused-command-line-argument -fuse-ld=lld-link /imsvc{dir}/crt/include /imsvc{dir}/sdk/include/ucrt /imsvc{dir}/sdk/include/um /imsvc{dir}/sdk/include/shared",
+                    "--target={target} -Wno-unused-command-line-argument -fuse-ld=lld-link /imsvc{dir}/crt/include /imsvc{dir}/sdk/include/ucrt /imsvc{dir}/sdk/include/um /imsvc{dir}/sdk/include/shared {user_set_cl_flags}",
                     target = target,
-                    dir = xwin_cache_dir.display()
+                    dir = xwin_cache_dir.display(),
+                    user_set_cl_flags = user_set_cl_flags,
                 );
                 cmd.env("CL_FLAGS", &cl_flags);
-                cmd.env(format!("CFLAGS_{}", env_target), &cl_flags);
-                cmd.env(format!("CXXFLAGS_{}", env_target), &cl_flags);
+                cmd.env(
+                    format!("CFLAGS_{}", env_target),
+                    &format!(
+                        "{cl_flags} {user_set_c_flags}",
+                        cl_flags = cl_flags,
+                        user_set_c_flags = user_set_c_flags
+                    ),
+                );
+                cmd.env(
+                    format!("CXXFLAGS_{}", env_target),
+                    &format!(
+                        "{cl_flags} {user_set_cxx_flags}",
+                        cl_flags = cl_flags,
+                        user_set_cxx_flags = user_set_cxx_flags
+                    ),
+                );
 
                 cmd.env(
                     format!("BINDGEN_EXTRA_CLANG_ARGS_{}", env_target), 
