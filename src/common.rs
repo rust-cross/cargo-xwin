@@ -543,9 +543,25 @@ fn default_build_target_from_config(workdir: &Path) -> Result<Option<String>> {
     Ok(Some(target.to_string()))
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+enum Rustflags {
+    String(String),
+    Array(Vec<String>),
+}
+
+impl From<Rustflags> for String {
+    fn from(rustflags: Rustflags) -> String {
+        match rustflags {
+            Rustflags::String(flags) => flags,
+            Rustflags::Array(flags) => flags.join(" "),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct CargoConfigRustflags {
-    rustflags: Option<String>,
+    rustflags: Option<Rustflags>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -582,9 +598,12 @@ fn get_rustflags(workdir: &Path, target: &str) -> Result<Option<String>> {
             let cargo_config: CargoConfig = serde_json::from_slice(&output.stdout)?;
             match cargo_config.target.get(target) {
                 Some(CargoConfigRustflags { rustflags }) if rustflags.is_some() => {
-                    Ok(rustflags.clone())
+                    Ok(rustflags.clone().map(|flags| flags.into()))
                 }
-                _ => Ok(cargo_config.build.and_then(|c| c.rustflags)),
+                _ => Ok(cargo_config
+                    .build
+                    .and_then(|c| c.rustflags)
+                    .map(|flags| flags.into())),
             }
         }
     }
