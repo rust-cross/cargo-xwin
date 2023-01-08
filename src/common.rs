@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::env;
 use std::path::{Path, PathBuf};
@@ -12,6 +12,7 @@ use clap::{
 use fs_err as fs;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use path_slash::PathExt;
+use serde::Deserialize;
 use which::{which, which_in};
 use xwin::util::ProgressTarget;
 
@@ -93,14 +94,14 @@ impl XWinOptions {
         let cache_dir = xwin_cache_dir.parent().unwrap();
         env_paths.push(cache_dir.to_path_buf());
 
+        let workdir = cargo
+            .manifest_path
+            .as_ref()
+            .and_then(|p| p.parent().map(|x| x.to_path_buf()))
+            .or_else(|| env::current_dir().ok())
+            .unwrap();
         let mut targets = cargo.target.clone();
         if targets.is_empty() {
-            let workdir = cargo
-                .manifest_path
-                .as_ref()
-                .and_then(|p| p.parent().map(|x| x.to_path_buf()))
-                .or_else(|| env::current_dir().ok())
-                .unwrap();
             if let Some(build_target) = default_build_target_from_config(&workdir)? {
                 // if no target is specified, use the default build target
                 // Note that this is required, otherwise it may fail with link errors
@@ -196,8 +197,8 @@ impl XWinOptions {
                     _ => target_arch,
                 };
 
-                let mut rustflags = env::var_os("RUSTFLAGS").unwrap_or_default();
-                rustflags.push(format!(
+                let mut rustflags = get_rustflags(&workdir, target)?.unwrap_or_default();
+                rustflags.push_str(&format!(
                     " -C linker-flavor=lld-link -Lnative={dir}/crt/lib/{arch} -Lnative={dir}/sdk/lib/um/{arch} -Lnative={dir}/sdk/lib/ucrt/{arch}",
                     dir = xwin_cache_dir.display(),
                     arch = xwin_arch,
@@ -540,4 +541,51 @@ fn default_build_target_from_config(workdir: &Path) -> Result<Option<String>> {
     let stdout = String::from_utf8(output.stdout)?;
     let target = stdout.trim().trim_matches('"');
     Ok(Some(target.to_string()))
+}
+
+#[derive(Debug, Deserialize)]
+struct CargoConfigRustflags {
+    rustflags: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CargoConfig {
+    build: Option<CargoConfigRustflags>,
+    #[serde(default)]
+    target: HashMap<String, CargoConfigRustflags>,
+}
+
+/// Get RUSTFLAGS in the following order:
+///
+/// 1. `RUSTFLAGS` environment variable.
+/// 2. `target.<triple>.rustflags` config value, no support for `target.<cfg>.rustflags` yet
+/// 3. `build.rustflags` config value
+fn get_rustflags(workdir: &Path, target: &str) -> Result<Option<String>> {
+    match env::var("RUSTFLAGS") {
+        Ok(flags) => Ok(Some(flags)),
+        Err(_) => {
+            let output = Command::new("cargo")
+                .current_dir(workdir)
+                .args([
+                    "config",
+                    "get",
+                    "-Z",
+                    "unstable-options",
+                    "--format",
+                    "json",
+                ])
+                .env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly")
+                .output()?;
+            if !output.status.success() {
+                return Ok(None);
+            }
+            let cargo_config: CargoConfig = serde_json::from_slice(&output.stdout)?;
+            match cargo_config.target.get(target) {
+                Some(CargoConfigRustflags { rustflags }) if rustflags.is_some() => {
+                    Ok(rustflags.clone())
+                }
+                _ => Ok(cargo_config.build.and_then(|c| c.rustflags)),
+            }
+        }
+    }
 }
