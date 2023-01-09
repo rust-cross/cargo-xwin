@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::convert::TryInto;
 use std::env;
 use std::path::{Path, PathBuf};
@@ -12,7 +12,6 @@ use clap::{
 use fs_err as fs;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use path_slash::PathExt;
-use serde::Deserialize;
 use which::{which, which_in};
 use xwin::util::ProgressTarget;
 
@@ -543,67 +542,19 @@ fn default_build_target_from_config(workdir: &Path) -> Result<Option<String>> {
     Ok(Some(target.to_string()))
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(untagged)]
-enum Rustflags {
-    String(String),
-    Array(Vec<String>),
-}
-
-impl From<Rustflags> for String {
-    fn from(rustflags: Rustflags) -> String {
-        match rustflags {
-            Rustflags::String(flags) => flags,
-            Rustflags::Array(flags) => flags.join(" "),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize)]
-struct CargoConfigRustflags {
-    rustflags: Option<Rustflags>,
-}
-
-#[derive(Debug, Deserialize)]
-struct CargoConfig {
-    build: Option<CargoConfigRustflags>,
-    #[serde(default)]
-    target: HashMap<String, CargoConfigRustflags>,
-}
-
 /// Get RUSTFLAGS in the following order:
 ///
 /// 1. `RUSTFLAGS` environment variable.
-/// 2. `target.<triple>.rustflags` config value, no support for `target.<cfg>.rustflags` yet
-/// 3. `build.rustflags` config value
+/// 2. `rustflags` cargo configuration
 fn get_rustflags(workdir: &Path, target: &str) -> Result<Option<String>> {
     match env::var("RUSTFLAGS") {
         Ok(flags) => Ok(Some(flags)),
         Err(_) => {
-            let output = Command::new("cargo")
-                .current_dir(workdir)
-                .args([
-                    "config",
-                    "get",
-                    "-Z",
-                    "unstable-options",
-                    "--format",
-                    "json",
-                ])
-                .env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly")
-                .output()?;
-            if !output.status.success() {
-                return Ok(None);
-            }
-            let cargo_config: CargoConfig = serde_json::from_slice(&output.stdout)?;
-            match cargo_config.target.get(target) {
-                Some(CargoConfigRustflags { rustflags }) if rustflags.is_some() => {
-                    Ok(rustflags.clone().map(|flags| flags.into()))
-                }
-                _ => Ok(cargo_config
-                    .build
-                    .and_then(|c| c.rustflags)
-                    .map(|flags| flags.into())),
+            let cargo_config = cargo_config2::Config::load_with_cwd(workdir)?;
+            let rustflags = cargo_config.rustflags(target)?;
+            match rustflags {
+                Some(rustflags) => Ok(Some(rustflags.encode_space_separated()?)),
+                None => Ok(None),
             }
         }
     }

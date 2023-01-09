@@ -13,14 +13,13 @@ rust-version = "1.62"
 
 [dependencies]
 anyhow = "1.0.53"
+cargo-config2 = "0.1.0"
 cargo-options = "0.5.2"
 clap = { version = "4.0.0", features = ["derive", "env", "wrap_help"] }
 dirs = "4.0.0"
 fs-err = "2.7.0"
 indicatif = "0.17.2"
 path-slash = "0.2.0"
-serde = { version = "1.0.152", features = ["derive"] }
-serde_json = "1.0.91"
 which = "4.2.4"
 xwin = { version = "0.2.9", default-features = false }
 
