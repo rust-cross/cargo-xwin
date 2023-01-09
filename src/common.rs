@@ -547,15 +547,10 @@ fn default_build_target_from_config(workdir: &Path) -> Result<Option<String>> {
 /// 1. `RUSTFLAGS` environment variable.
 /// 2. `rustflags` cargo configuration
 fn get_rustflags(workdir: &Path, target: &str) -> Result<Option<String>> {
-    match env::var("RUSTFLAGS") {
-        Ok(flags) => Ok(Some(flags)),
-        Err(_) => {
-            let cargo_config = cargo_config2::Config::load_with_cwd(workdir)?;
-            let rustflags = cargo_config.rustflags(target)?;
-            match rustflags {
-                Some(rustflags) => Ok(Some(rustflags.encode_space_separated()?)),
-                None => Ok(None),
-            }
-        }
+    let cargo_config = cargo_config2::Config::load_with_cwd(workdir)?;
+    let rustflags = cargo_config.rustflags(target)?;
+    match rustflags {
+        Some(rustflags) => Ok(Some(rustflags.encode_space_separated()?)),
+        None => Ok(None),
     }
 }
