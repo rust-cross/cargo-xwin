@@ -197,12 +197,25 @@ impl XWinOptions {
                 };
 
                 let mut rustflags = get_rustflags(&workdir, target)?.unwrap_or_default();
-                rustflags.push_str(&format!(
-                    " -C linker-flavor=lld-link -Lnative={dir}/crt/lib/{arch} -Lnative={dir}/sdk/lib/um/{arch} -Lnative={dir}/sdk/lib/ucrt/{arch}",
+                rustflags
+                    .flags
+                    .extend(["-C".to_string(), "linker-flavor=lld-link".to_string()]);
+                rustflags.push(format!(
+                    "-Lnative={dir}/crt/lib/{arch}",
                     dir = xwin_cache_dir.display(),
-                    arch = xwin_arch,
+                    arch = xwin_arch
                 ));
-                cmd.env("RUSTFLAGS", rustflags);
+                rustflags.push(format!(
+                    "-Lnative={dir}/sdk/lib/um/{arch}",
+                    dir = xwin_cache_dir.display(),
+                    arch = xwin_arch
+                ));
+                rustflags.push(format!(
+                    "-Lnative={dir}/sdk/lib/ucrt/{arch}",
+                    dir = xwin_cache_dir.display(),
+                    arch = xwin_arch
+                ));
+                cmd.env("CARGO_ENCODED_RUSTFLAGS", rustflags.encode()?);
 
                 #[cfg(target_os = "macos")]
                 {
@@ -546,11 +559,8 @@ fn default_build_target_from_config(workdir: &Path) -> Result<Option<String>> {
 ///
 /// 1. `RUSTFLAGS` environment variable.
 /// 2. `rustflags` cargo configuration
-fn get_rustflags(workdir: &Path, target: &str) -> Result<Option<String>> {
+fn get_rustflags(workdir: &Path, target: &str) -> Result<Option<cargo_config2::Flags>> {
     let cargo_config = cargo_config2::Config::load_with_cwd(workdir)?;
     let rustflags = cargo_config.rustflags(target)?;
-    match rustflags {
-        Some(rustflags) => Ok(Some(rustflags.encode_space_separated()?)),
-        None => Ok(None),
-    }
+    Ok(rustflags)
 }
