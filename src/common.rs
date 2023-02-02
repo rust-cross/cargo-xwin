@@ -66,6 +66,7 @@ impl Default for XWinOptions {
 impl XWinOptions {
     pub fn apply_command_env(
         &self,
+        manifest_path: Option<&Path>,
         cargo: &cargo_options::CommonOptions,
         cmd: &mut Command,
     ) -> Result<()> {
@@ -93,9 +94,7 @@ impl XWinOptions {
         let cache_dir = xwin_cache_dir.parent().unwrap();
         env_paths.push(cache_dir.to_path_buf());
 
-        let workdir = cargo
-            .manifest_path
-            .as_ref()
+        let workdir = manifest_path
             .and_then(|p| p.parent().map(|x| x.to_path_buf()))
             .or_else(|| env::current_dir().ok())
             .unwrap();
