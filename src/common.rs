@@ -276,7 +276,7 @@ impl XWinOptions {
             .fold(0, |acc, var| acc | *var as u32);
         let pruned = xwin::prune_pkg_list(&pkg_manifest, arches, variants, false)?;
         let op = xwin::Ops::Splat(xwin::SplatConfig {
-            include_debug_libs: false,
+            include_debug_libs: true,
             include_debug_symbols: false,
             enable_symlinks: !cfg!(target_os = "macos"),
             preserve_ms_arch_notation: false,
