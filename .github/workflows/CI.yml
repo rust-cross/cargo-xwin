@@ -55,9 +55,9 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           components: llvm-tools-preview
       - name: Cache cargo build
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
       - name: Cache test crates cargo build
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             tests/hello-tls/target
