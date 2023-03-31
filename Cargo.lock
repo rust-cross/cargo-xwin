@@ -1787,9 +1787,9 @@ dependencies = [
 
 [[package]]
 name = "xwin"
-version = "0.2.11"
+version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83f1b72807711ddc86bdda6f97b9bb9be127a3055604da7cdc1e6527aed1a942"
+checksum = "1f5f72397389fd26dd36b01f23e19c0608db8e764f7bb65fdc5b1e7e2aa02550"
 dependencies = [
  "anyhow",
  "bytes",
