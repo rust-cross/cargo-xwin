@@ -19,7 +19,7 @@ anyhow = "1.0.53"
 cargo-config2 = "0.1.4"
 cargo-options = "0.6.0"
 clap = { version = "4.0.0", features = ["derive", "env", "wrap_help"] }
-dirs = "4.0.0"
+dirs = "5.0.0"
 fs-err = "2.7.0"
 indicatif = "0.17.2"
 path-slash = "0.2.0"
