@@ -186,6 +186,14 @@ impl XWinOptions {
                     )
                 );
 
+                cmd.env(
+                    format!("RCFLAGS"), 
+                    format!(
+                        "-I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared",
+                        dir = xwin_cache_dir.display()
+                    )
+                );
+
                 let target_arch = target
                     .split_once('-')
                     .map(|(x, _)| x)
