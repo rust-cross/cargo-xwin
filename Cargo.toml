@@ -1,6 +1,6 @@
 [package]
 name = "cargo-xwin"
-version = "0.14.3"
+version = "0.14.4"
 edition = "2021"
 description = "Cross compile Cargo project to Windows MSVC target with ease"
 license = "MIT"
