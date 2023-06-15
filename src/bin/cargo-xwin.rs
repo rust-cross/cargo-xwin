@@ -1,6 +1,6 @@
 use anyhow::Context;
 use cargo_options::Metadata;
-use cargo_xwin::{Build, Run, Rustc, Test};
+use cargo_xwin::{Build, Check, Clippy, Run, Rustc, Test};
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
@@ -19,6 +19,8 @@ pub enum Cli {
 pub enum Opt {
     #[command(name = "build", alias = "b")]
     Build(Build),
+    Check(Check),
+    Clippy(Clippy),
     #[command(name = "metadata")]
     Metadata(Metadata),
     #[command(name = "run", alias = "r")]
@@ -47,6 +49,8 @@ fn main() -> anyhow::Result<()> {
             Opt::Run(run) => run.execute()?,
             Opt::Rustc(rustc) => rustc.execute()?,
             Opt::Test(test) => test.execute()?,
+            Opt::Check(check) => check.execute()?,
+            Opt::Clippy(clippy) => clippy.execute()?,
         },
     }
     Ok(())
