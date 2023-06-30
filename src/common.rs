@@ -187,7 +187,7 @@ impl XWinOptions {
                 );
 
                 cmd.env(
-                    format!("RCFLAGS"), 
+                    "RCFLAGS", 
                     format!(
                         "-I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared",
                         dir = xwin_cache_dir.display()
@@ -490,8 +490,8 @@ pub fn adjust_canonicalization(p: String) -> String {
 #[cfg(target_os = "windows")]
 pub fn adjust_canonicalization(p: String) -> String {
     const VERBATIM_PREFIX: &str = r#"\\?\"#;
-    if p.starts_with(VERBATIM_PREFIX) {
-        p[VERBATIM_PREFIX.len()..].to_string()
+    if let Some(p) = p.strip_prefix(VERBATIM_PREFIX) {
+        p.to_string()
     } else {
         p
     }
