@@ -32,6 +32,8 @@ pub enum Opt {
 }
 
 fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt::init();
+
     let cli = Cli::parse();
     match cli {
         Cli::Opt(opt) | Cli::Cargo(opt) => match opt {

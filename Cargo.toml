@@ -24,6 +24,7 @@ fs-err = "2.7.0"
 indicatif = "0.17.2"
 paste = "1.0.12"
 path-slash = "0.2.0"
+tracing-subscriber = { version = "0.3.17", features = ["fmt"] }
 which = "4.2.4"
 xwin = { version = "0.2.9", default-features = false }
 
