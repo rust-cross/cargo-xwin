@@ -270,7 +270,8 @@ impl XWinOptions {
         let draw_target = ProgressTarget::Stdout;
 
         let xwin_dir = adjust_canonicalization(cache_dir.display().to_string());
-        let ctx = xwin::Ctx::with_dir(xwin::PathBuf::from(xwin_dir), draw_target)?;
+        // timeout defaults to 60s
+        let ctx = xwin::Ctx::with_dir(xwin::PathBuf::from(xwin_dir), draw_target, None)?;
         let ctx = std::sync::Arc::new(ctx);
         let pkg_manifest = self.load_manifest(&ctx, draw_target)?;
 
