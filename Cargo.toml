@@ -26,7 +26,7 @@ paste = "1.0.12"
 path-slash = "0.2.0"
 tracing-subscriber = { version = "0.3.17", features = ["fmt"] }
 which = "4.2.4"
-xwin = { version = "0.2.9", default-features = false }
+xwin = { version = "0.3.1", default-features = false }
 
 [features]
 # By default we use rustls for TLS
