@@ -115,7 +115,7 @@ impl XWinOptions {
 
         for target in &targets {
             if target.contains("msvc") {
-                self.setup_msvc_crt(xwin_cache_dir.clone(), self.xwin_include_debug_libs)?;
+                self.setup_msvc_crt(xwin_cache_dir.clone())?;
                 let env_target = target.to_lowercase().replace('-', "_");
 
                 if which_in("clang-cl", Some(env_path.clone()), env::current_dir()?).is_err() {
@@ -255,7 +255,7 @@ impl XWinOptions {
         Ok(())
     }
 
-    fn setup_msvc_crt(&self, cache_dir: PathBuf, include_debug_libs: bool) -> Result<()> {
+    fn setup_msvc_crt(&self, cache_dir: PathBuf) -> Result<()> {
         let done_mark_file = cache_dir.join("DONE");
         let xwin_arches: HashSet<_> = self
             .xwin_arch
@@ -290,7 +290,7 @@ impl XWinOptions {
             .fold(0, |acc, var| acc | *var as u32);
         let pruned = xwin::prune_pkg_list(&pkg_manifest, arches, variants, false)?;
         let op = xwin::Ops::Splat(xwin::SplatConfig {
-            include_debug_libs,
+            include_debug_libs: self.xwin_include_debug_libs,
             include_debug_symbols: false,
             enable_symlinks: !cfg!(target_os = "macos"),
             preserve_ms_arch_notation: false,
