@@ -50,6 +50,10 @@ pub struct XWinOptions {
     /// a "<major>.<minor>" version.
     #[arg(long, env = "XWIN_VERSION", default_value = "16", hide = true)]
     pub xwin_version: String,
+
+    /// Whether or not to include debug libs
+    #[arg(long, env = "XWIN_INCLUDE_DEBUG_LIBS", hide = true)]
+    pub xwin_include_debug_libs: bool,
 }
 
 impl Default for XWinOptions {
@@ -59,6 +63,7 @@ impl Default for XWinOptions {
             xwin_arch: vec![xwin::Arch::X86_64, xwin::Arch::Aarch64],
             xwin_variant: vec![xwin::Variant::Desktop],
             xwin_version: "16".to_string(),
+            xwin_include_debug_libs: false,
         }
     }
 }
@@ -285,7 +290,7 @@ impl XWinOptions {
             .fold(0, |acc, var| acc | *var as u32);
         let pruned = xwin::prune_pkg_list(&pkg_manifest, arches, variants, false)?;
         let op = xwin::Ops::Splat(xwin::SplatConfig {
-            include_debug_libs: false,
+            include_debug_libs: self.xwin_include_debug_libs,
             include_debug_symbols: false,
             enable_symlinks: !cfg!(target_os = "macos"),
             preserve_ms_arch_notation: false,
