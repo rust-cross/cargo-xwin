@@ -1,5 +1,7 @@
-use anyhow::Context;
-use cargo_options::Metadata;
+use std::env;
+use std::ffi::OsString;
+use std::process::Command;
+
 use cargo_xwin::{Build, Check, Clippy, Run, Rustc, Test};
 use clap::{Parser, Subcommand};
 
@@ -11,6 +13,8 @@ pub enum Cli {
     // flatten opt here so that `cargo-xwin build` also works
     #[command(flatten)]
     Cargo(Opt),
+    #[command(external_subcommand)]
+    External(Vec<OsString>),
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -21,8 +25,6 @@ pub enum Opt {
     Build(Build),
     Check(Check),
     Clippy(Clippy),
-    #[command(name = "metadata")]
-    Metadata(Metadata),
     #[command(name = "run", alias = "r")]
     Run(Run),
     #[command(name = "rustc")]
@@ -38,22 +40,22 @@ fn main() -> anyhow::Result<()> {
     match cli {
         Cli::Opt(opt) | Cli::Cargo(opt) => match opt {
             Opt::Build(build) => build.execute()?,
-            Opt::Metadata(metadata) => {
-                let mut cmd = metadata.command();
-                let mut child = cmd.spawn().context("Failed to run cargo metadata")?;
-                let status = child
-                    .wait()
-                    .expect("Failed to wait on cargo metadata process");
-                if !status.success() {
-                    std::process::exit(status.code().unwrap_or(1));
-                }
-            }
             Opt::Run(run) => run.execute()?,
             Opt::Rustc(rustc) => rustc.execute()?,
             Opt::Test(test) => test.execute()?,
             Opt::Check(check) => check.execute()?,
             Opt::Clippy(clippy) => clippy.execute()?,
         },
+        Cli::External(args) => {
+            let mut child = Command::new(env::var_os("CARGO").unwrap_or("cargo".into()))
+                .args(args)
+                .env_remove("CARGO")
+                .spawn()?;
+            let status = child.wait().expect("Failed to wait on cargo process");
+            if !status.success() {
+                std::process::exit(status.code().unwrap_or(1));
+            }
+        }
     }
     Ok(())
 }
