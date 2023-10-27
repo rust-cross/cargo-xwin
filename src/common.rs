@@ -75,12 +75,16 @@ impl XWinOptions {
         cargo: &cargo_options::CommonOptions,
         cmd: &mut Command,
     ) -> Result<()> {
-        let xwin_cache_dir = self.xwin_cache_dir.clone().unwrap_or_else(|| {
-            dirs::cache_dir()
-                // If the really is no cache dir, cwd will also do
-                .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
-                .join(env!("CARGO_PKG_NAME"))
-        }).join("xwin");
+        let xwin_cache_dir = self
+            .xwin_cache_dir
+            .clone()
+            .unwrap_or_else(|| {
+                dirs::cache_dir()
+                    // If the really is no cache dir, cwd will also do
+                    .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
+                    .join(env!("CARGO_PKG_NAME"))
+            })
+            .join("xwin");
         fs::create_dir_all(&xwin_cache_dir)?;
         let xwin_cache_dir = xwin_cache_dir.canonicalize()?;
 
@@ -395,12 +399,16 @@ impl XWinOptions {
     }
 
     fn setup_cmake_toolchain(&self, target: &str, xwin_cache_dir: &Path) -> Result<PathBuf> {
-        let cmake_cache_dir = self.xwin_cache_dir.clone().unwrap_or_else(|| {
-            dirs::cache_dir()
-                // If the really is no cache dir, cwd will also do
-                .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
-                .join(env!("CARGO_PKG_NAME"))
-        }).join("cmake");
+        let cmake_cache_dir = self
+            .xwin_cache_dir
+            .clone()
+            .unwrap_or_else(|| {
+                dirs::cache_dir()
+                    // If the really is no cache dir, cwd will also do
+                    .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
+                    .join(env!("CARGO_PKG_NAME"))
+            })
+            .join("cmake");
         fs::create_dir_all(&cmake_cache_dir)?;
 
         let override_file = cmake_cache_dir.join("override.cmake");
