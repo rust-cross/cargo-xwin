@@ -291,7 +291,7 @@ impl XWinOptions {
             .xwin_variant
             .iter()
             .fold(0, |acc, var| acc | *var as u32);
-        let pruned = xwin::prune_pkg_list(&pkg_manifest, arches, variants, false)?;
+        let pruned = xwin::prune_pkg_list(&pkg_manifest, arches, variants, false, None, None)?;
         let op = xwin::Ops::Splat(xwin::SplatConfig {
             include_debug_libs: self.xwin_include_debug_libs,
             include_debug_symbols: false,
@@ -299,11 +299,12 @@ impl XWinOptions {
             preserve_ms_arch_notation: false,
             copy: false,
             output: cache_dir.clone().try_into()?,
+            map: None,
         });
         let pkgs = pkg_manifest.packages;
 
         let mp = MultiProgress::with_draw_target(draw_target.into());
-        let work_items: Vec<_> = pruned
+        let work_items: Vec<_> = pruned.payloads
         .into_iter()
         .map(|pay| {
             let prefix = match pay.kind {
@@ -354,7 +355,7 @@ impl XWinOptions {
         .collect();
 
         mp.set_move_cursor(true);
-        ctx.execute(pkgs, work_items, arches, variants, op)?;
+        ctx.execute(pkgs, work_items, "".to_string(), arches, variants, op)?;
 
         let downloaded_arches: Vec<_> = self
             .xwin_arch
