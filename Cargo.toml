@@ -7,7 +7,7 @@ license = "MIT"
 keywords = ["windows", "cargo", "msvc"]
 readme = "README.md"
 repository = "https://github.com/rust-cross/cargo-xwin"
-rust-version = "1.63"
+rust-version = "1.67"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -22,16 +22,20 @@ clap = { version = "4.0.0", features = ["derive", "env", "wrap_help"] }
 dirs = "5.0.0"
 fs-err = "2.7.0"
 indicatif = "0.17.2"
+native-tls-crate = { package = "native-tls", version = "0.2.11", optional = true }
 paste = "1.0.12"
 path-slash = "0.2.0"
+rustls = { version = "0.21.8", optional = true }
+rustls-pemfile = { version = "1.0.4", optional = true }
 tracing-subscriber = { version = "0.3.17", features = ["fmt"] }
+ureq = { version = "2.8.0", default-features = false, features = ["gzip"] }
 which = "4.2.4"
-xwin = { version = "0.3.1", default-features = false }
+xwin = { version = "0.5.0", default-features = false }
 
 [features]
 # By default we use rustls for TLS
 default = ["rustls-tls"]
-rustls-tls = ["xwin/rustls-tls"]
+rustls-tls = ["ureq/tls", "rustls", "rustls-pemfile"]
 # If this feature is enabled we instead use the native TLS implementation for the
 # target platform
-native-tls = ["xwin/native-tls"]
+native-tls = ["ureq/native-tls", "rustls-pemfile", "native-tls-crate"]
