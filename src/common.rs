@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::convert::TryInto;
 use std::env;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -277,9 +278,10 @@ impl XWinOptions {
 
         let draw_target = ProgressTarget::Stdout;
 
+        let agent = http_agent()?;
         let xwin_dir = adjust_canonicalization(cache_dir.display().to_string());
         // timeout defaults to 60s
-        let ctx = xwin::Ctx::with_dir(xwin::PathBuf::from(xwin_dir), draw_target, None)?;
+        let ctx = xwin::Ctx::with_dir(xwin::PathBuf::from(xwin_dir), draw_target, agent)?;
         let ctx = std::sync::Arc::new(ctx);
         let pkg_manifest = self.load_manifest(&ctx, draw_target)?;
 
@@ -586,4 +588,68 @@ fn get_rustflags(workdir: &Path, target: &str) -> Result<Option<cargo_config2::F
     let cargo_config = cargo_config2::Config::load_with_cwd(workdir)?;
     let rustflags = cargo_config.rustflags(target)?;
     Ok(rustflags)
+}
+
+fn http_proxy() -> Result<String, env::VarError> {
+    env::var("HTTPS_PROXY")
+        .or_else(|_| env::var("https_proxy"))
+        .or_else(|_| env::var("HTTP_PROXY"))
+        .or_else(|_| env::var("http_proxy"))
+        .or_else(|_| env::var("ALL_PROXY"))
+        .or_else(|_| env::var("all_proxy"))
+}
+
+#[cfg(any(feature = "native-tls", feature = "rustls"))]
+fn tls_ca_bundle() -> Option<OsString> {
+    env::var_os("REQUESTS_CA_BUNDLE")
+        .or_else(|| env::var_os("CURL_CA_BUNDLE"))
+        .or_else(|| env::var_os("SSL_CERT_FILE"))
+}
+
+#[cfg(all(feature = "native-tls", not(feature = "rustls")))]
+fn http_agent() -> Result<ureq::Agent> {
+    use std::fs::File;
+    use std::io;
+    use std::sync::Arc;
+
+    let mut builder = ureq::builder();
+    if let Ok(proxy) = http_proxy() {
+        let proxy = ureq::Proxy::new(proxy)?;
+        builder = builder.proxy(proxy);
+    };
+    let mut tls_builder = native_tls_crate::TlsConnector::builder();
+    if let Some(ca_bundle) = tls_ca_bundle() {
+        let mut reader = io::BufReader::new(File::open(ca_bundle)?);
+        for cert in rustls_pemfile::certs(&mut reader)? {
+            tls_builder.add_root_certificate(native_tls_crate::Certificate::from_pem(&cert)?);
+        }
+    }
+    builder = builder.tls_connector(Arc::new(tls_builder.build()?));
+    Ok(builder.build())
+}
+
+#[cfg(feature = "rustls")]
+fn http_agent() -> Result<ureq::Agent> {
+    use std::fs::File;
+    use std::io;
+    use std::sync::Arc;
+
+    let mut builder = ureq::builder();
+    if let Ok(proxy) = http_proxy() {
+        let proxy = ureq::Proxy::new(proxy)?;
+        builder = builder.proxy(proxy);
+    };
+    if let Some(ca_bundle) = tls_ca_bundle() {
+        let mut reader = io::BufReader::new(File::open(ca_bundle)?);
+        let certs = rustls_pemfile::certs(&mut reader)?;
+        let mut root_certs = rustls::RootCertStore::empty();
+        root_certs.add_parsable_certificates(&certs);
+        let client_config = rustls::ClientConfig::builder()
+            .with_safe_defaults()
+            .with_root_certificates(root_certs)
+            .with_no_client_auth();
+        Ok(builder.tls_config(Arc::new(client_config)).build())
+    } else {
+        Ok(builder.build())
+    }
 }

@@ -120,9 +120,13 @@ dependencies = [
  "dirs",
  "fs-err",
  "indicatif",
+ "native-tls",
  "paste",
  "path-slash",
+ "rustls",
+ "rustls-pemfile",
  "tracing-subscriber",
+ "ureq",
  "which",
  "xwin",
 ]
@@ -772,15 +776,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
-name = "openssl-src"
-version = "300.1.3+3.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd2c101a165fff9935e34def4669595ab1c7847943c42be86e21503e482be107"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "openssl-sys"
 version = "0.9.93"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -788,7 +783,6 @@ checksum = "db4d56a4c0478783083cfafcc42493dd4a981d41669da64b4572a2a089b51b1d"
 dependencies = [
  "cc",
  "libc",
- "openssl-src",
  "pkg-config",
  "vcpkg",
 ]
@@ -1085,9 +1079,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-pemfile"
-version = "1.0.3"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d3987094b1d07b653b7dfdc3f70ce9a1da9c51ac18c1b06b662e4f9a0e9f4b2"
+checksum = "1c74cae0a4cf6ccbbf5f359f08efdf8ee7e1dc532573bf0db71968cb56b1448c"
 dependencies = [
  "base64",
 ]
@@ -1833,9 +1827,9 @@ dependencies = [
 
 [[package]]
 name = "xwin"
-version = "0.4.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d47cd98379545559ca535e0118818ad7eefbfd6ca2b989c5be526b5f01ee91bd"
+checksum = "c43e0202f5457b48558096cb7b36d0e473f267551a89c82ed72d73b01dfd4007"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1848,12 +1842,9 @@ dependencies = [
  "indicatif",
  "memchr",
  "msi",
- "native-tls",
  "parking_lot",
  "rayon",
  "regex",
- "rustls",
- "rustls-pemfile",
  "serde",
  "serde_json",
  "sha2",
