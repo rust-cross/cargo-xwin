@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 use std::convert::TryInto;
 use std::env;
-use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -590,17 +589,8 @@ fn get_rustflags(workdir: &Path, target: &str) -> Result<Option<cargo_config2::F
     Ok(rustflags)
 }
 
-fn http_proxy() -> Result<String, env::VarError> {
-    env::var("HTTPS_PROXY")
-        .or_else(|_| env::var("https_proxy"))
-        .or_else(|_| env::var("HTTP_PROXY"))
-        .or_else(|_| env::var("http_proxy"))
-        .or_else(|_| env::var("ALL_PROXY"))
-        .or_else(|_| env::var("all_proxy"))
-}
-
 #[cfg(any(feature = "native-tls", feature = "rustls"))]
-fn tls_ca_bundle() -> Option<OsString> {
+fn tls_ca_bundle() -> Option<std::ffi::OsString> {
     env::var_os("REQUESTS_CA_BUNDLE")
         .or_else(|| env::var_os("CURL_CA_BUNDLE"))
         .or_else(|| env::var_os("SSL_CERT_FILE"))
@@ -612,11 +602,7 @@ fn http_agent() -> Result<ureq::Agent> {
     use std::io;
     use std::sync::Arc;
 
-    let mut builder = ureq::builder();
-    if let Ok(proxy) = http_proxy() {
-        let proxy = ureq::Proxy::new(proxy)?;
-        builder = builder.proxy(proxy);
-    };
+    let mut builder = ureq::builder().try_proxy_from_env(true);
     let mut tls_builder = native_tls_crate::TlsConnector::builder();
     if let Some(ca_bundle) = tls_ca_bundle() {
         let mut reader = io::BufReader::new(File::open(ca_bundle)?);
@@ -634,11 +620,7 @@ fn http_agent() -> Result<ureq::Agent> {
     use std::io;
     use std::sync::Arc;
 
-    let mut builder = ureq::builder();
-    if let Ok(proxy) = http_proxy() {
-        let proxy = ureq::Proxy::new(proxy)?;
-        builder = builder.proxy(proxy);
-    };
+    let builder = ureq::builder().try_proxy_from_env(true);
     if let Some(ca_bundle) = tls_ca_bundle() {
         let mut reader = io::BufReader::new(File::open(ca_bundle)?);
         let certs = rustls_pemfile::certs(&mut reader)?;
@@ -652,4 +634,10 @@ fn http_agent() -> Result<ureq::Agent> {
     } else {
         Ok(builder.build())
     }
+}
+
+#[cfg(not(any(feature = "native-tls", feature = "rustls")))]
+fn http_agent() -> Result<ureq::Agent> {
+    let builder = ureq::builder().try_proxy_from_env(true);
+    Ok(builder.build())
 }
