@@ -6,7 +6,11 @@ use cargo_xwin::{Build, Check, Clippy, Run, Rustc, Test};
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
-#[command(version, name = "cargo-xwin")]
+#[command(
+    version,
+    name = "cargo-xwin",
+    styles = cargo_options::styles(),
+)]
 pub enum Cli {
     #[command(subcommand, name = "xwin")]
     Opt(Opt),
