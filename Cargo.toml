@@ -17,8 +17,8 @@ pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }.{ targe
 [dependencies]
 anyhow = "1.0.53"
 cargo-config2 = "0.1.4"
-cargo-options = "0.6.0"
-clap = { version = "4.0.0", features = ["derive", "env", "wrap_help"] }
+cargo-options = "0.7.1"
+clap = { version = "4.3.0", features = ["derive", "env", "wrap_help", "unstable-styles"] }
 dirs = "5.0.0"
 fs-err = "2.7.0"
 indicatif = "0.17.2"
