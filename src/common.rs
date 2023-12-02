@@ -606,7 +606,8 @@ fn http_agent() -> Result<ureq::Agent> {
     let mut tls_builder = native_tls_crate::TlsConnector::builder();
     if let Some(ca_bundle) = tls_ca_bundle() {
         let mut reader = io::BufReader::new(File::open(ca_bundle)?);
-        for cert in rustls_pemfile::certs(&mut reader)? {
+        for cert in rustls_pemfile::certs(&mut reader) {
+            let cert = cert?;
             tls_builder.add_root_certificate(native_tls_crate::Certificate::from_pem(&cert)?);
         }
     }
