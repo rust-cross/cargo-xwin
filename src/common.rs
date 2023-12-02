@@ -623,7 +623,7 @@ fn http_agent() -> Result<ureq::Agent> {
     let builder = ureq::builder().try_proxy_from_env(true);
     if let Some(ca_bundle) = tls_ca_bundle() {
         let mut reader = io::BufReader::new(File::open(ca_bundle)?);
-        let certs = rustls_pemfile::certs(&mut reader)?;
+        let certs = rustls_pemfile::certs(&mut reader).collect::<Result<Vec<_>, _>>()?;
         let mut root_certs = rustls::RootCertStore::empty();
         root_certs.add_parsable_certificates(&certs);
         let client_config = rustls::ClientConfig::builder()
