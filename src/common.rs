@@ -298,6 +298,7 @@ impl XWinOptions {
             include_debug_symbols: false,
             enable_symlinks: !cfg!(target_os = "macos"),
             preserve_ms_arch_notation: false,
+            use_winsysroot_style: false,
             copy: false,
             output: cache_dir.clone().try_into()?,
             map: None,
@@ -356,7 +357,15 @@ impl XWinOptions {
         .collect();
 
         mp.set_move_cursor(true);
-        ctx.execute(pkgs, work_items, "".to_string(), arches, variants, op)?;
+        ctx.execute(
+            pkgs,
+            work_items,
+            pruned.crt_version,
+            pruned.sdk_version,
+            arches,
+            variants,
+            op,
+        )?;
 
         let downloaded_arches: Vec<_> = self
             .xwin_arch
