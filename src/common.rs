@@ -48,7 +48,7 @@ pub struct XWinOptions {
 
     /// The version to retrieve, can either be a major version of 15, 16 or 17, or
     /// a "<major>.<minor>" version.
-    #[arg(long, env = "XWIN_VERSION", default_value = "17", hide = true)]
+    #[arg(long, env = "XWIN_VERSION", default_value = "16", hide = true)]
     pub xwin_version: String,
 
     /// Whether or not to include debug libs
