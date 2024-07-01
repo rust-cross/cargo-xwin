@@ -30,7 +30,7 @@ rustls-pemfile = { version = "2.0.0", optional = true }
 tracing-subscriber = { version = "0.3.17", features = ["fmt"] }
 ureq = { version = "2.9.4", default-features = false, features = ["gzip", "socks-proxy"] }
 which = "6.0.0"
-xwin = { version = "0.6.0", default-features = false }
+xwin = { version = "0.6.1", default-features = false }
 
 [features]
 # By default we use rustls for TLS
