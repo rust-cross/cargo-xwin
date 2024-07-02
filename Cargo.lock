@@ -1836,9 +1836,9 @@ checksum = "d135d17ab770252ad95e9a872d365cf3090e3be864a34ab46f48555993efc904"
 
 [[package]]
 name = "xwin"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eaaf18c5baa6e6a20c04e8dd00094f711f12ef564da4f7bf9f85c88908e591bc"
+checksum = "795a3b1e33730ce2bc97209c437ad753697a2e445921dee8a366c14aee631141"
 dependencies = [
  "anyhow",
  "bytes",
