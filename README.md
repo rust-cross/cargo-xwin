@@ -23,7 +23,7 @@ Cross compile Cargo project to Windows msvc target with ease.
 ## Installation
 
 ```bash
-cargo install cargo-xwin
+cargo install --locked cargo-xwin
 ```
 
 You can also install it using pip:
