@@ -54,6 +54,10 @@ pub struct XWinOptions {
     /// Whether or not to include debug libs
     #[arg(long, env = "XWIN_INCLUDE_DEBUG_LIBS", hide = true)]
     pub xwin_include_debug_libs: bool,
+
+    /// Whether or not to include debug symbols (PDBs)
+    #[arg(long, env = "XWIN_INCLUDE_DEBUG_SYMBOLS", hide = true)]
+    pub xwin_include_debug_symbols: bool,
 }
 
 impl Default for XWinOptions {
@@ -64,6 +68,7 @@ impl Default for XWinOptions {
             xwin_variant: vec![xwin::Variant::Desktop],
             xwin_version: "16".to_string(),
             xwin_include_debug_libs: false,
+            xwin_include_debug_symbols: false,
         }
     }
 }
@@ -295,7 +300,7 @@ impl XWinOptions {
         let pruned = xwin::prune_pkg_list(&pkg_manifest, arches, variants, false, None, None)?;
         let op = xwin::Ops::Splat(xwin::SplatConfig {
             include_debug_libs: self.xwin_include_debug_libs,
-            include_debug_symbols: false,
+            include_debug_symbols: self.xwin_include_debug_symbols,
             enable_symlinks: !cfg!(target_os = "macos"),
             preserve_ms_arch_notation: false,
             use_winsysroot_style: false,
