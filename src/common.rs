@@ -167,10 +167,11 @@ impl XWinOptions {
                 let user_set_c_flags = env::var("CFLAGS").unwrap_or_default();
                 let user_set_cxx_flags = env::var("CXXFLAGS").unwrap_or_default();
 
+                let xwin_dir = adjust_canonicalization(xwin_cache_dir.to_slash_lossy().to_string());
                 let cl_flags = format!(
                     "--target={target} -Wno-unused-command-line-argument -fuse-ld=lld-link /imsvc{dir}/crt/include /imsvc{dir}/sdk/include/ucrt /imsvc{dir}/sdk/include/um /imsvc{dir}/sdk/include/shared {user_set_cl_flags}",
                     target = target,
-                    dir = xwin_cache_dir.display(),
+                    dir = xwin_dir,
                     user_set_cl_flags = user_set_cl_flags,
                 );
                 cmd.env("CL_FLAGS", &cl_flags);
@@ -192,18 +193,18 @@ impl XWinOptions {
                 );
 
                 cmd.env(
-                    format!("BINDGEN_EXTRA_CLANG_ARGS_{}", env_target), 
+                    format!("BINDGEN_EXTRA_CLANG_ARGS_{}", env_target),
                     format!(
                         "-I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared",
-                        dir = xwin_cache_dir.display()
+                        dir = xwin_dir
                     )
                 );
 
                 cmd.env(
-                    "RCFLAGS", 
+                    "RCFLAGS",
                     format!(
                         "-I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared",
-                        dir = xwin_cache_dir.display()
+                        dir = xwin_dir
                     )
                 );
 
@@ -222,17 +223,17 @@ impl XWinOptions {
                     .extend(["-C".to_string(), "linker-flavor=lld-link".to_string()]);
                 rustflags.push(format!(
                     "-Lnative={dir}/crt/lib/{arch}",
-                    dir = xwin_cache_dir.display(),
+                    dir = xwin_dir,
                     arch = xwin_arch
                 ));
                 rustflags.push(format!(
                     "-Lnative={dir}/sdk/lib/um/{arch}",
-                    dir = xwin_cache_dir.display(),
+                    dir = xwin_dir,
                     arch = xwin_arch
                 ));
                 rustflags.push(format!(
                     "-Lnative={dir}/sdk/lib/ucrt/{arch}",
-                    dir = xwin_cache_dir.display(),
+                    dir = xwin_dir,
                     arch = xwin_arch
                 ));
                 cmd.env("CARGO_ENCODED_RUSTFLAGS", rustflags.encode()?);
@@ -283,7 +284,7 @@ impl XWinOptions {
         let draw_target = ProgressTarget::Stdout;
 
         let agent = http_agent()?;
-        let xwin_dir = adjust_canonicalization(cache_dir.display().to_string());
+        let xwin_dir = adjust_canonicalization(cache_dir.to_slash_lossy().to_string());
         // timeout defaults to 60s
         let ctx = xwin::Ctx::with_dir(xwin::PathBuf::from(xwin_dir), draw_target, agent)?;
         let ctx = std::sync::Arc::new(ctx);
