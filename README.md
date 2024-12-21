@@ -16,9 +16,10 @@ Cross compile Cargo project to Windows msvc target with ease using [xwin](https:
 
 ## Prerequisite
 
-1. For pure Rust project, no prerequisites needed.
-2. For C/C++ dependencies, install [clang](https://clang.llvm.org/) (On macOS run `brew install llvm` and you're good to go).
-3. For assembly dependencies, install `llvm-tools-preview` component via `rustup component add llvm-tools-preview` or install [llvm](https://llvm.org).
+1. Install [clang](https://clang.llvm.org/) (On macOS run `brew install llvm` and you're good to go).
+2. For assembly dependencies, install `llvm-tools` component via `rustup component add llvm-tools` or install [llvm](https://llvm.org).
+
+A full LLVM installation is recommended to avoid possible issues.
 
 ## Installation
 
@@ -56,6 +57,7 @@ The Microsoft CRT and Windows SDK can be customized using the following environm
 
 | Environment Variable         | CLI option                     | Description                                                                                                        |
 | ---------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `XWIN_CROSS_COMPILER`        | `cross-compiler`               | The cross compiler to use, defaults to `clang-cl`, possible values: `clang-cl`, `clang`                            |
 | `XWIN_ARCH`                  | `--xwin-arch`                  | The architectures to include, defaults to `x86_64,aarch64`, possible values: x86, x86_64, aarch, aarch64           |
 | `XWIN_VARIANT`               | `--xwin-variant`               | The variants to include, defaults to `desktop`, possible values: desktop, onecore, spectre                         |
 | `XWIN_VERSION`               | `--xwin-version`               | The version to retrieve, defaults to 16, can either be a major version of 15 or 16, or a `<major>.<minor>` version |
