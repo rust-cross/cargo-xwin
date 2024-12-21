@@ -309,6 +309,9 @@ impl<'a> ClangCl<'a> {
         .collect();
 
         mp.set_move_cursor(true);
+        if mp.is_hidden() {
+            eprintln!("⏬ Start downloading MSVC CRT...");
+        }
         ctx.execute(
             pkgs,
             work_items,
@@ -334,6 +337,9 @@ impl<'a> ClangCl<'a> {
         let unpack = cache_dir.join("unpack");
         if unpack.exists() {
             let _ = fs::remove_dir_all(unpack);
+        }
+        if mp.is_hidden() {
+            eprintln!("✅ Finished downloading MSVC CRT.");
         }
         Ok(())
     }
