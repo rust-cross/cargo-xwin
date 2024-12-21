@@ -14,6 +14,7 @@ use crate::common::{
 
 const MSVC_SYSROOT_REPOSITORY: &str = "trcrsired/windows-msvc-sysroot";
 const MSVC_SYSROOT_ASSET_NAME: &str = "windows-msvc-sysroot.tar.xz";
+const FALLBACK_DOWNLOAD_URL: &str = "https://github.com/trcrsired/windows-msvc-sysroot/releases/download/20241217/windows-msvc-sysroot.tar.xz";
 
 #[derive(Debug)]
 pub struct Clang<'a> {
@@ -159,15 +160,26 @@ impl<'a> Clang<'a> {
         }
 
         let agent = http_agent()?;
-        let gh_token = env::var("GITHUB_TOKEN").ok();
         // fetch release info to get download url
+        let download_url = self
+            .get_latest_msvc_sysroot_download_url(agent.clone())
+            .unwrap_or_else(|_| FALLBACK_DOWNLOAD_URL.to_string());
+        self.download_msvc_sysroot(&cache_dir, agent, &download_url)
+            .context("Failed to unpack msvc sysroot")?;
+        Ok(msvc_sysroot_dir)
+    }
+
+    fn get_latest_msvc_sysroot_download_url(&self, agent: ureq::Agent) -> Result<String> {
+        if let Ok(url) = env::var("XWIN_MSVC_SYSROOT_DOWNLOAD_URL") {
+            return Ok(url);
+        }
         let mut request = agent
             .get(&format!(
                 "https://api.github.com/repos/{}/releases/latest",
                 MSVC_SYSROOT_REPOSITORY
             ))
             .set("X-GitHub-Api-Version", "2022-11-28");
-        if let Some(token) = &gh_token {
+        if let Ok(token) = env::var("GITHUB_TOKEN") {
             request = request.set("Authorization", &format!("Bearer {token}"));
         }
         let response = request.call().context("Failed to get GitHub release")?;
@@ -181,10 +193,8 @@ impl<'a> Clang<'a> {
             .with_context(|| {
                 format!("Failed to find {MSVC_SYSROOT_ASSET_NAME} in GitHub release")
             })?;
-        let download_url = &asset.browser_download_url;
-        self.download_msvc_sysroot(&cache_dir, agent, download_url)
-            .context("Failed to unpack msvc sysroot")?;
-        Ok(msvc_sysroot_dir)
+        let download_url = asset.browser_download_url.clone();
+        Ok(download_url)
     }
 
     fn download_msvc_sysroot(
