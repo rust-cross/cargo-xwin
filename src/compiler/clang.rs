@@ -154,9 +154,16 @@ impl<'a> Clang<'a> {
 
     fn setup_msvc_sysroot(&self, cache_dir: PathBuf) -> Result<PathBuf> {
         let msvc_sysroot_dir = cache_dir.join("windows-msvc-sysroot");
+        let done_mark_file = msvc_sysroot_dir.join("DONE");
         if msvc_sysroot_dir.is_dir() {
-            // Already downloaded and unpacked
-            return Ok(msvc_sysroot_dir);
+            if done_mark_file.is_file() {
+                // Already downloaded and unpacked
+                return Ok(msvc_sysroot_dir);
+            } else {
+                // Download again
+                fs::remove_dir_all(&msvc_sysroot_dir)
+                    .context("Failed to remove existing msvc sysroot")?;
+            }
         }
 
         let agent = http_agent()?;
@@ -166,6 +173,7 @@ impl<'a> Clang<'a> {
             .unwrap_or_else(|_| FALLBACK_DOWNLOAD_URL.to_string());
         self.download_msvc_sysroot(&cache_dir, agent, &download_url)
             .context("Failed to unpack msvc sysroot")?;
+        fs::write(done_mark_file, download_url)?;
         Ok(msvc_sysroot_dir)
     }
 
@@ -203,12 +211,30 @@ impl<'a> Clang<'a> {
         agent: ureq::Agent,
         download_url: &str,
     ) -> Result<()> {
+        use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
         use xz2::read::XzDecoder;
 
         let response = agent.get(download_url).call()?;
-        let tar = XzDecoder::new(response.into_reader());
+        let len = response
+            .header("content-length")
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(0);
+        let pb = ProgressBar::new(len);
+        pb.set_draw_target(ProgressDrawTarget::stdout());
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template(
+                    "{spinner:.green} {prefix:.bold} [{elapsed}] {wide_bar:.green} {bytes}/{total_bytes} {msg}",
+                )?
+                .progress_chars("=> "),
+        );
+        pb.set_prefix("sysroot");
+        pb.set_message("⏬ Downloading");
+        let reader = pb.wrap_read(response.into_reader());
+        let tar = XzDecoder::new(reader);
         let mut archive = tar::Archive::new(tar);
         archive.unpack(cache_dir)?;
+        pb.finish_with_message("Download completed");
         Ok(())
     }
 
