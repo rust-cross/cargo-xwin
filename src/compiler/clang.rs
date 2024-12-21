@@ -230,11 +230,17 @@ impl<'a> Clang<'a> {
         );
         pb.set_prefix("sysroot");
         pb.set_message("⏬ Downloading");
+        if pb.is_hidden() {
+            eprintln!("⏬ Start downloading MSVC sysroot...");
+        }
         let reader = pb.wrap_read(response.into_reader());
         let tar = XzDecoder::new(reader);
         let mut archive = tar::Archive::new(tar);
         archive.unpack(cache_dir)?;
         pb.finish_with_message("Download completed");
+        if pb.is_hidden() {
+            eprintln!("✅ Finished downloading MSVC sysroot.");
+        }
         Ok(())
     }
 
