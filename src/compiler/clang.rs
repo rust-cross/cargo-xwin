@@ -75,7 +75,7 @@ impl<'a> Clang<'a> {
                 let target_unknown_vendor = target.replace("-pc-", "-unknown-");
                 let env_target = target.to_lowercase().replace('-', "_");
 
-                symlink_llvm_tool("rust-lld", "lld", env_path.clone(), &cache_dir)?;
+                symlink_llvm_tool("rust-lld", "lld-link", env_path.clone(), &cache_dir)?;
                 symlink_llvm_tool("llvm-ar", "llvm-lib", env_path.clone(), &cache_dir)?;
                 symlink_llvm_tool("llvm-ar", "llvm-dlltool", env_path.clone(), &cache_dir)?;
 
@@ -87,7 +87,7 @@ impl<'a> Clang<'a> {
                 cmd.env(format!("AR_{}", env_target), "llvm-lib");
                 cmd.env(
                     format!("CARGO_TARGET_{}_LINKER", env_target.to_uppercase()),
-                    "lld",
+                    "lld-link",
                 );
 
                 let user_set_c_flags = env::var("CFLAGS").unwrap_or_default();
@@ -95,7 +95,7 @@ impl<'a> Clang<'a> {
                 let sysroot_dir =
                     adjust_canonicalization(msvc_sysroot_dir.to_slash_lossy().to_string());
                 let clang_flags = format!(
-                    "--target={target_no_vendor} -fuse-ld=lld -I{dir}/include -I{dir}/include/c++/stl -L{dir}/lib/{target_unknown_vendor}",
+                    "--target={target_no_vendor} -fuse-ld=lld-link -I{dir}/include -I{dir}/include/c++/stl -L{dir}/lib/{target_unknown_vendor}",
                     dir = sysroot_dir,
                 );
                 cmd.env(
@@ -116,6 +116,9 @@ impl<'a> Clang<'a> {
                 );
 
                 let mut rustflags = get_rustflags(&workdir, target)?.unwrap_or_default();
+                rustflags
+                    .flags
+                    .extend(["-C".to_string(), "linker-flavor=lld-link".to_string()]);
                 rustflags.push(format!(
                     "-Lnative={dir}/lib/{target_unknown_vendor}",
                     dir = sysroot_dir,
@@ -231,18 +234,17 @@ impl<'a> Clang<'a> {
 
         let content = format!(
             r#"
-cmake_minimum_required(VERSION 3.29)
 set(CMAKE_SYSTEM_NAME Windows)
 set(CMAKE_SYSTEM_PROCESSOR {processor})
 
 set(CMAKE_C_COMPILER clang CACHE FILEPATH "")
 set(CMAKE_CXX_COMPILER clang++ CACHE FILEPATH "")
+set(CMAKE_LINKER lld-link CACHE FILEPATH "")
 set(CMAKE_RC_COMPILER llvm-rc CACHE FILEPATH "")
-set(CMAKE_LINKER_TYPE LLD CACHE STRING "")
 
 set(COMPILE_FLAGS
     --target={target_no_vendor}
-    -fuse-ld=lld
+    -fuse-ld=lld-link
     -I{dir}/include
     -I{dir}/include/c++/stl)
 
