@@ -377,7 +377,8 @@ impl<'a> ClangCl<'a> {
                     .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
                     .join(env!("CARGO_PKG_NAME"))
             })
-            .join("cmake");
+            .join("cmake")
+            .join("clang-cl");
         fs::create_dir_all(&cmake_cache_dir)?;
 
         let override_file = cmake_cache_dir.join("override.cmake");

@@ -138,7 +138,14 @@ impl<'a> Clang<'a> {
 
                 cmd.env("PATH", env::join_paths(env_paths.clone())?);
 
-                // TODO: CMake support
+                // CMake support
+                let cmake_toolchain = self.setup_cmake_toolchain(target, &sysroot_dir)?;
+                cmd.env("CMAKE_GENERATOR", "Ninja")
+                    .env("CMAKE_SYSTEM_NAME", "Windows")
+                    .env(
+                        format!("CMAKE_TOOLCHAIN_FILE_{}", env_target),
+                        cmake_toolchain,
+                    );
             }
         }
         Ok(())
@@ -193,6 +200,62 @@ impl<'a> Clang<'a> {
         let mut archive = tar::Archive::new(tar);
         archive.unpack(cache_dir)?;
         Ok(())
+    }
+
+    fn setup_cmake_toolchain(&self, target: &str, sysroot_dir: &str) -> Result<PathBuf> {
+        // x86_64-pc-windows-msvc -> x86_64-windows-msvc
+        let target_no_vendor = target.replace("-pc-", "-");
+        let target_unknown_vendor = target.replace("-pc-", "-unknown-");
+        let cmake_cache_dir = self
+            .xwin_options
+            .xwin_cache_dir
+            .clone()
+            .unwrap_or_else(|| {
+                dirs::cache_dir()
+                    // If the really is no cache dir, cwd will also do
+                    .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
+                    .join(env!("CARGO_PKG_NAME"))
+            })
+            .join("cmake")
+            .join("clang");
+        fs::create_dir_all(&cmake_cache_dir)?;
+
+        let toolchain_file = cmake_cache_dir.join(format!("{}-toolchain.cmake", target));
+        let target_arch = target
+            .split_once('-')
+            .map(|(x, _)| x)
+            .context("invalid target triple")?;
+        let processor = match target_arch {
+            "i586" | "i686" => "X86",
+            "x86_64" => "AMD64",
+            "aarch64" => "ARM64",
+            _ => target_arch,
+        };
+
+        let content = format!(
+            r#"
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_PROCESSOR {processor})
+
+set(CMAKE_C_COMPILER clang CACHE FILEPATH "")
+set(CMAKE_CXX_COMPILER clang++ CACHE FILEPATH "")
+set(CMAKE_LINKER lld-link CACHE FILEPATH "")
+set(CMAKE_RC_COMPILER llvm-rc CACHE FILEPATH "")
+
+set(COMPILE_FLAGS
+    --target={target_no_vendor}
+    -fuse-ld=lld-link
+    -I{dir}/include
+    -I{dir}/include/c++/stl)
+
+set(LINK_FLAGS
+    /manifest:no
+    -libpath:"{dir}/lib/{target_unknown_vendor}")
+        "#,
+            dir = sysroot_dir,
+        );
+        fs::write(&toolchain_file, content)?;
+        Ok(toolchain_file)
     }
 }
 
