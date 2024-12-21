@@ -16,6 +16,8 @@ pub enum CompilerBackend {
     /// clang-cl backend
     #[default]
     ClangCl,
+    /// clang backend
+    Clang,
 }
 
 /// common xwin options
@@ -92,6 +94,10 @@ impl XWinOptions {
             CompilerBackend::ClangCl => {
                 let clang_cl = crate::backend::clang_cl::ClangCl::new(self);
                 clang_cl.apply_command_env(manifest_path, cargo, cmd)?;
+            }
+            CompilerBackend::Clang => {
+                let clang = crate::backend::clang::Clang::new(self);
+                clang.apply_command_env(manifest_path, cargo, cmd)?;
             }
         }
         Ok(())

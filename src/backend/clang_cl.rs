@@ -123,30 +123,20 @@ impl<'a> ClangCl<'a> {
                 let xwin_dir = adjust_canonicalization(xwin_cache_dir.to_slash_lossy().to_string());
                 let cl_flags = format!(
                     "--target={target} -Wno-unused-command-line-argument -fuse-ld=lld-link /imsvc{dir}/crt/include /imsvc{dir}/sdk/include/ucrt /imsvc{dir}/sdk/include/um /imsvc{dir}/sdk/include/shared {user_set_cl_flags}",
-                    target = target,
                     dir = xwin_dir,
-                    user_set_cl_flags = user_set_cl_flags,
                 );
                 cmd.env("CL_FLAGS", &cl_flags);
                 cmd.env(
-                    format!("CFLAGS_{}", env_target),
-                    &format!(
-                        "{cl_flags} {user_set_c_flags}",
-                        cl_flags = cl_flags,
-                        user_set_c_flags = user_set_c_flags
-                    ),
+                    format!("CFLAGS_{env_target}"),
+                    &format!("{cl_flags} {user_set_c_flags}",),
                 );
                 cmd.env(
-                    format!("CXXFLAGS_{}", env_target),
-                    &format!(
-                        "{cl_flags} {user_set_cxx_flags}",
-                        cl_flags = cl_flags,
-                        user_set_cxx_flags = user_set_cxx_flags
-                    ),
+                    format!("CXXFLAGS_{env_target}"),
+                    &format!("{cl_flags} {user_set_cxx_flags}",),
                 );
 
                 cmd.env(
-                    format!("BINDGEN_EXTRA_CLANG_ARGS_{}", env_target),
+                    format!("BINDGEN_EXTRA_CLANG_ARGS_{env_target}"),
                     format!(
                         "-I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared",
                         dir = xwin_dir
