@@ -10,7 +10,7 @@ _formerly cargo-xwinbuild_
 
 > 🚀 Help me to become a full-time open-source developer by [sponsoring me on GitHub](https://github.com/sponsors/messense)
 
-Cross compile Cargo project to Windows msvc target with ease using [xwin](https://github.com/Jake-Shadle/xwin).
+Cross compile Cargo project to Windows msvc target with ease using [xwin](https://github.com/Jake-Shadle/xwin) or [windows-msvc-sysroot](https://github.com/trcrsired/windows-msvc-sysroot).
 
 **By using this software you are consented to accept the license at [https://go.microsoft.com/fwlink/?LinkId=2086102](https://go.microsoft.com/fwlink/?LinkId=2086102)**
 
