@@ -27,6 +27,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         toolchain: [stable, nightly]
+        cross-compiler: [clang-cl, clang]
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      XWIN_CROSS_COMPILER: ${{ matrix.cross-compiler }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4

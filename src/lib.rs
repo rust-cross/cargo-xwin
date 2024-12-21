@@ -1,5 +1,5 @@
-mod backend;
 mod common;
+mod compiler;
 mod macros;
 mod run;
 mod test;

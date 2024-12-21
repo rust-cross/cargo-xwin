@@ -10,9 +10,9 @@ use clap::{
 use fs_err as fs;
 use which::which_in;
 
-/// MSVC cross compiler backend
+/// MSVC cross compiler
 #[derive(Clone, Debug, Default, ValueEnum)]
-pub enum CompilerBackend {
+pub enum CrossCompiler {
     /// clang-cl backend
     #[default]
     ClangCl,
@@ -23,9 +23,9 @@ pub enum CompilerBackend {
 /// common xwin options
 #[derive(Clone, Debug, Parser)]
 pub struct XWinOptions {
-    /// The cross compiler backend to use
-    #[arg(long, env = "XWIN_COMPILER_BACKEND", default_value = "clang-cl")]
-    pub compiler_backend: CompilerBackend,
+    /// The cross compiler to use
+    #[arg(long, env = "XWIN_CROSS_COMPILER", default_value = "clang-cl")]
+    pub cross_compiler: CrossCompiler,
 
     /// xwin cache directory
     #[arg(long, env = "XWIN_CACHE_DIR", hide = true)]
@@ -78,7 +78,7 @@ impl Default for XWinOptions {
             xwin_version: "16".to_string(),
             xwin_include_debug_libs: false,
             xwin_include_debug_symbols: false,
-            compiler_backend: CompilerBackend::ClangCl,
+            cross_compiler: CrossCompiler::ClangCl,
         }
     }
 }
@@ -90,13 +90,13 @@ impl XWinOptions {
         cargo: &cargo_options::CommonOptions,
         cmd: &mut Command,
     ) -> Result<()> {
-        match self.compiler_backend {
-            CompilerBackend::ClangCl => {
-                let clang_cl = crate::backend::clang_cl::ClangCl::new(self);
+        match self.cross_compiler {
+            CrossCompiler::ClangCl => {
+                let clang_cl = crate::compiler::clang_cl::ClangCl::new(self);
                 clang_cl.apply_command_env(manifest_path, cargo, cmd)?;
             }
-            CompilerBackend::Clang => {
-                let clang = crate::backend::clang::Clang::new(self);
+            CrossCompiler::Clang => {
+                let clang = crate::compiler::clang::Clang::new(self);
                 clang.apply_command_env(manifest_path, cargo, cmd)?;
             }
         }
