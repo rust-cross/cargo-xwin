@@ -11,7 +11,7 @@ macro_rules! cargo_command {
                 use anyhow::{Context, Result};
                 use clap::Parser;
 
-                use crate::common::XWinOptions;
+                use crate::options::XWinOptions;
 
                 #[derive(Clone, Debug, Default, Parser)]
                 #[command(

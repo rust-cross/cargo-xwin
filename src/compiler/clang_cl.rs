@@ -8,13 +8,14 @@ use anyhow::{Context, Result};
 use fs_err as fs;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use path_slash::PathExt;
-use which::{which, which_in};
 use xwin::util::ProgressTarget;
 
-use crate::common::{
+use crate::compiler::common::{
     adjust_canonicalization, default_build_target_from_config, get_rustflags, http_agent,
-    symlink_llvm_tool, XWinOptions,
+    setup_clang_cl_symlink, setup_cmake_env, setup_env_path, setup_llvm_tools,
+    setup_target_compiler_and_linker_env,
 };
+use crate::options::XWinOptions;
 
 #[derive(Debug)]
 pub struct ClangCl<'a> {
@@ -30,35 +31,14 @@ impl<'a> ClangCl<'a> {
         &self,
         manifest_path: Option<&Path>,
         cargo: &cargo_options::CommonOptions,
+        cache_dir: PathBuf,
         cmd: &mut Command,
     ) -> Result<()> {
-        let xwin_cache_dir = self
-            .xwin_options
-            .xwin_cache_dir
-            .clone()
-            .unwrap_or_else(|| {
-                dirs::cache_dir()
-                    // If the really is no cache dir, cwd will also do
-                    .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
-                    .join(env!("CARGO_PKG_NAME"))
-            })
-            .join("xwin");
+        let env_path = setup_env_path(&cache_dir)?;
+
+        let xwin_cache_dir = cache_dir.join("xwin");
         fs::create_dir_all(&xwin_cache_dir)?;
         let xwin_cache_dir = xwin_cache_dir.canonicalize()?;
-
-        let env_path = env::var("PATH").unwrap_or_default();
-        let mut env_paths: Vec<_> = env::split_paths(&env_path).collect();
-
-        let env_path = if cfg!(target_os = "macos") {
-            let mut new_path = env_path;
-            new_path.push_str(":/opt/homebrew/opt/llvm/bin");
-            new_path.push_str(":/usr/local/opt/llvm/bin");
-            new_path
-        } else {
-            env_path
-        };
-        let cache_dir = xwin_cache_dir.parent().unwrap();
-        env_paths.push(cache_dir.to_path_buf());
 
         let workdir = manifest_path
             .and_then(|p| p.parent().map(|x| x.to_path_buf()))
@@ -79,42 +59,9 @@ impl<'a> ClangCl<'a> {
                 self.setup_msvc_crt(xwin_cache_dir.clone())?;
                 let env_target = target.to_lowercase().replace('-', "_");
 
-                if which_in("clang-cl", Some(env_path.clone()), env::current_dir()?).is_err() {
-                    if let Ok(clang) = which("clang") {
-                        #[cfg(windows)]
-                        {
-                            let symlink = cache_dir.join("clang-cl.exe");
-                            if symlink.exists() {
-                                fs::remove_file(&symlink)?;
-                            }
-                            std::os::windows::fs::symlink_file(clang, symlink)?;
-                        }
-
-                        #[cfg(unix)]
-                        {
-                            let symlink = cache_dir.join("clang-cl");
-                            if symlink.exists() {
-                                fs::remove_file(&symlink)?;
-                            }
-                            std::os::unix::fs::symlink(clang, symlink)?;
-                        }
-                    }
-                }
-                symlink_llvm_tool("rust-lld", "lld-link", env_path.clone(), cache_dir)?;
-                symlink_llvm_tool("llvm-ar", "llvm-lib", env_path.clone(), cache_dir)?;
-                symlink_llvm_tool("llvm-ar", "llvm-dlltool", env_path.clone(), cache_dir)?;
-
-                cmd.env("TARGET_CC", "clang-cl");
-                cmd.env("TARGET_CXX", "clang-cl");
-                cmd.env(format!("CC_{}", env_target), "clang-cl");
-                cmd.env(format!("CXX_{}", env_target), "clang-cl");
-                cmd.env("TARGET_AR", "llvm-lib");
-                cmd.env(format!("AR_{}", env_target), "llvm-lib");
-
-                cmd.env(
-                    format!("CARGO_TARGET_{}_LINKER", env_target.to_uppercase()),
-                    "lld-link",
-                );
+                setup_clang_cl_symlink(&cache_dir)?;
+                setup_llvm_tools(&env_path, &cache_dir)?;
+                setup_target_compiler_and_linker_env(cmd, &env_target, "clang-cl")?;
 
                 let user_set_cl_flags = env::var("CL_FLAGS").unwrap_or_default();
                 let user_set_c_flags = env::var("CFLAGS").unwrap_or_default();
@@ -180,28 +127,11 @@ impl<'a> ClangCl<'a> {
                     arch = xwin_arch
                 ));
                 cmd.env("CARGO_ENCODED_RUSTFLAGS", rustflags.encode()?);
-
-                #[cfg(target_os = "macos")]
-                {
-                    let usr_llvm = "/usr/local/opt/llvm/bin".into();
-                    let opt_llvm = "/opt/homebrew/opt/llvm/bin".into();
-                    if cfg!(target_arch = "x86_64") && !env_paths.contains(&usr_llvm) {
-                        env_paths.push(usr_llvm);
-                    } else if cfg!(target_arch = "aarch64") && !env_paths.contains(&opt_llvm) {
-                        env_paths.push(opt_llvm);
-                    }
-                }
-
-                cmd.env("PATH", env::join_paths(env_paths.clone())?);
+                cmd.env("PATH", &env_path);
 
                 // CMake support
                 let cmake_toolchain = self.setup_cmake_toolchain(target, &xwin_cache_dir)?;
-                cmd.env("CMAKE_GENERATOR", "Ninja")
-                    .env("CMAKE_SYSTEM_NAME", "Windows")
-                    .env(
-                        format!("CMAKE_TOOLCHAIN_FILE_{}", env_target),
-                        cmake_toolchain,
-                    );
+                setup_cmake_env(cmd, target, cmake_toolchain)?;
             }
         }
         Ok(())
@@ -373,16 +303,9 @@ impl<'a> ClangCl<'a> {
     }
 
     fn setup_cmake_toolchain(&self, target: &str, xwin_cache_dir: &Path) -> Result<PathBuf> {
-        let cmake_cache_dir = self
-            .xwin_options
-            .xwin_cache_dir
-            .clone()
-            .unwrap_or_else(|| {
-                dirs::cache_dir()
-                    // If the really is no cache dir, cwd will also do
-                    .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
-                    .join(env!("CARGO_PKG_NAME"))
-            })
+        let cmake_cache_dir = xwin_cache_dir
+            .parent()
+            .unwrap()
             .join("cmake")
             .join("clang-cl");
         fs::create_dir_all(&cmake_cache_dir)?;

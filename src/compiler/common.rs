@@ -1,122 +1,91 @@
+use anyhow::Result;
+use fs_err as fs;
 use std::env;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use which::{which, which_in};
 
-use anyhow::Result;
-use clap::{
-    builder::{PossibleValuesParser, TypedValueParser as _},
-    Parser, ValueEnum,
-};
-use fs_err as fs;
-use which::which_in;
-
-/// MSVC cross compiler
-#[derive(Clone, Debug, Default, ValueEnum)]
-pub enum CrossCompiler {
-    /// clang-cl backend
-    #[default]
-    ClangCl,
-    /// clang backend
-    Clang,
-}
-
-/// common xwin options
-#[derive(Clone, Debug, Parser)]
-pub struct XWinOptions {
-    /// The cross compiler to use
-    #[arg(long, env = "XWIN_CROSS_COMPILER", default_value = "clang-cl")]
-    pub cross_compiler: CrossCompiler,
-
-    /// xwin cache directory
-    #[arg(long, env = "XWIN_CACHE_DIR", hide = true)]
-    pub xwin_cache_dir: Option<PathBuf>,
-
-    /// The architectures to include in CRT/SDK
-    #[arg(
-        long,
-        env = "XWIN_ARCH",
-        value_parser = PossibleValuesParser::new(["x86", "x86_64", "aarch", "aarch64"])
-            .map(|s| s.parse::<xwin::Arch>().unwrap()),
-        value_delimiter = ',',
-        default_values_t = vec![xwin::Arch::X86_64, xwin::Arch::Aarch64],
-        hide = true,
-    )]
-    pub xwin_arch: Vec<xwin::Arch>,
-
-    /// The variants to include
-    #[arg(
-        long,
-        env = "XWIN_VARIANT",
-        value_parser = PossibleValuesParser::new(["desktop", "onecore", /*"store",*/ "spectre"])
-            .map(|s| s.parse::<xwin::Variant>().unwrap()),
-        value_delimiter = ',',
-        default_values_t = vec![xwin::Variant::Desktop],
-        hide = true,
-    )]
-    pub xwin_variant: Vec<xwin::Variant>,
-
-    /// The version to retrieve, can either be a major version of 15, 16 or 17, or
-    /// a "<major>.<minor>" version.
-    #[arg(long, env = "XWIN_VERSION", default_value = "16", hide = true)]
-    pub xwin_version: String,
-
-    /// Whether or not to include debug libs
-    #[arg(long, env = "XWIN_INCLUDE_DEBUG_LIBS", hide = true)]
-    pub xwin_include_debug_libs: bool,
-
-    /// Whether or not to include debug symbols (PDBs)
-    #[arg(long, env = "XWIN_INCLUDE_DEBUG_SYMBOLS", hide = true)]
-    pub xwin_include_debug_symbols: bool,
-}
-
-impl Default for XWinOptions {
-    fn default() -> Self {
-        Self {
-            xwin_cache_dir: None,
-            xwin_arch: vec![xwin::Arch::X86_64, xwin::Arch::Aarch64],
-            xwin_variant: vec![xwin::Variant::Desktop],
-            xwin_version: "16".to_string(),
-            xwin_include_debug_libs: false,
-            xwin_include_debug_symbols: false,
-            cross_compiler: CrossCompiler::ClangCl,
+pub fn setup_env_path(cache_dir: &Path) -> Result<OsString> {
+    let env_path = env::var("PATH").unwrap_or_default();
+    let mut env_paths: Vec<_> = env::split_paths(&env_path).collect();
+    if cfg!(target_os = "macos") {
+        // setup macos homebrew llvm paths
+        let usr_llvm = "/usr/local/opt/llvm/bin".into();
+        let opt_llvm = "/opt/homebrew/opt/llvm/bin".into();
+        if cfg!(target_arch = "x86_64")
+            && Path::new(&usr_llvm).is_dir()
+            && !env_paths.contains(&usr_llvm)
+        {
+            env_paths.push(usr_llvm);
+        } else if cfg!(target_arch = "aarch64")
+            && Path::new(&opt_llvm).is_dir()
+            && !env_paths.contains(&opt_llvm)
+        {
+            env_paths.push(opt_llvm);
         }
     }
+    env_paths.push(cache_dir.to_path_buf());
+    Ok(env::join_paths(env_paths)?)
 }
 
-impl XWinOptions {
-    pub fn apply_command_env(
-        &self,
-        manifest_path: Option<&Path>,
-        cargo: &cargo_options::CommonOptions,
-        cmd: &mut Command,
-    ) -> Result<()> {
-        match self.cross_compiler {
-            CrossCompiler::ClangCl => {
-                let clang_cl = crate::compiler::clang_cl::ClangCl::new(self);
-                clang_cl.apply_command_env(manifest_path, cargo, cmd)?;
+pub fn setup_llvm_tools(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
+    symlink_llvm_tool("rust-lld", "lld-link", env_path, cache_dir)?;
+    symlink_llvm_tool("llvm-ar", "llvm-lib", env_path, cache_dir)?;
+    symlink_llvm_tool("llvm-ar", "llvm-dlltool", env_path, cache_dir)?;
+    Ok(())
+}
+
+pub fn setup_clang_cl_symlink(cache_dir: &Path) -> Result<()> {
+    if let Ok(clang) = which("clang") {
+        #[cfg(windows)]
+        {
+            let symlink = cache_dir.join("clang-cl.exe");
+            if symlink.exists() {
+                fs::remove_file(&symlink)?;
             }
-            CrossCompiler::Clang => {
-                let clang = crate::compiler::clang::Clang::new(self);
-                clang.apply_command_env(manifest_path, cargo, cmd)?;
-            }
+            std::os::windows::fs::symlink_file(clang, symlink)?;
         }
-        Ok(())
+
+        #[cfg(unix)]
+        {
+            let symlink = cache_dir.join("clang-cl");
+            if symlink.exists() {
+                fs::remove_file(&symlink)?;
+            }
+            std::os::unix::fs::symlink(clang, symlink)?;
+        }
     }
+    Ok(())
 }
 
-#[cfg(target_family = "unix")]
-pub fn adjust_canonicalization(p: String) -> String {
-    p
+pub fn setup_target_compiler_and_linker_env(
+    cmd: &mut Command,
+    env_target: &str,
+    compiler: &str,
+) -> Result<()> {
+    cmd.env("TARGET_CC", compiler);
+    cmd.env("TARGET_CXX", compiler);
+    cmd.env(format!("CC_{}", env_target), compiler);
+    cmd.env(format!("CXX_{}", env_target), compiler);
+    cmd.env("TARGET_AR", "llvm-lib");
+    cmd.env(format!("AR_{}", env_target), "llvm-lib");
+    cmd.env(
+        format!("CARGO_TARGET_{}_LINKER", env_target.to_uppercase()),
+        "lld-link",
+    );
+    Ok(())
 }
 
-#[cfg(target_os = "windows")]
-pub fn adjust_canonicalization(p: String) -> String {
-    const VERBATIM_PREFIX: &str = r#"\\?\"#;
-    if let Some(p) = p.strip_prefix(VERBATIM_PREFIX) {
-        p.to_string()
-    } else {
-        p
-    }
+pub fn setup_cmake_env(cmd: &mut Command, target: &str, toolchain_path: PathBuf) -> Result<()> {
+    let env_target = target.to_lowercase().replace('-', "_");
+    cmd.env("CMAKE_GENERATOR", "Ninja")
+        .env("CMAKE_SYSTEM_NAME", "Windows")
+        .env(
+            format!("CMAKE_TOOLCHAIN_FILE_{}", env_target),
+            toolchain_path,
+        );
+    Ok(())
 }
 
 pub fn rustc_target_bin_dir() -> Result<PathBuf> {
@@ -130,10 +99,10 @@ pub fn rustc_target_bin_dir() -> Result<PathBuf> {
 }
 
 /// Symlink Rust provided llvm tool component
-pub fn symlink_llvm_tool(
+fn symlink_llvm_tool(
     tool: &str,
     link_name: &str,
-    env_path: String,
+    env_path: &OsStr,
     cache_dir: &Path,
 ) -> Result<()> {
     if which_in(link_name, Some(env_path), env::current_dir()?).is_err() {
@@ -160,6 +129,21 @@ pub fn symlink_llvm_tool(
         }
     }
     Ok(())
+}
+
+#[cfg(target_family = "unix")]
+pub fn adjust_canonicalization(p: String) -> String {
+    p
+}
+
+#[cfg(target_os = "windows")]
+pub fn adjust_canonicalization(p: String) -> String {
+    const VERBATIM_PREFIX: &str = r#"\\?\"#;
+    if let Some(p) = p.strip_prefix(VERBATIM_PREFIX) {
+        p.to_string()
+    } else {
+        p
+    }
 }
 
 pub fn default_build_target_from_config(workdir: &Path) -> Result<Option<String>> {

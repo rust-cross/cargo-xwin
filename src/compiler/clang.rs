@@ -7,9 +7,9 @@ use fs_err as fs;
 use path_slash::PathExt;
 use serde::Deserialize;
 
-use crate::common::{
+use crate::compiler::common::{
     adjust_canonicalization, default_build_target_from_config, get_rustflags, http_agent,
-    symlink_llvm_tool, XWinOptions,
+    setup_cmake_env, setup_env_path, setup_llvm_tools, setup_target_compiler_and_linker_env,
 };
 
 const MSVC_SYSROOT_REPOSITORY: &str = "trcrsired/windows-msvc-sysroot";
@@ -17,43 +17,21 @@ const MSVC_SYSROOT_ASSET_NAME: &str = "windows-msvc-sysroot.tar.xz";
 const FALLBACK_DOWNLOAD_URL: &str = "https://github.com/trcrsired/windows-msvc-sysroot/releases/download/20241217/windows-msvc-sysroot.tar.xz";
 
 #[derive(Debug)]
-pub struct Clang<'a> {
-    xwin_options: &'a XWinOptions,
-}
+pub struct Clang;
 
-impl<'a> Clang<'a> {
-    pub fn new(xwin_options: &'a XWinOptions) -> Self {
-        Self { xwin_options }
+impl Clang {
+    pub fn new() -> Self {
+        Clang
     }
 
     pub fn apply_command_env(
         &self,
         manifest_path: Option<&Path>,
         cargo: &cargo_options::CommonOptions,
+        cache_dir: PathBuf,
         cmd: &mut Command,
     ) -> Result<()> {
-        let cache_dir = self.xwin_options.xwin_cache_dir.clone().unwrap_or_else(|| {
-            dirs::cache_dir()
-                // If the really is no cache dir, cwd will also do
-                .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
-                .join(env!("CARGO_PKG_NAME"))
-        });
-        fs::create_dir_all(&cache_dir)?;
-        let cache_dir = cache_dir.canonicalize()?;
-
-        let env_path = env::var("PATH").unwrap_or_default();
-        let mut env_paths: Vec<_> = env::split_paths(&env_path).collect();
-
-        let env_path = if cfg!(target_os = "macos") {
-            let mut new_path = env_path;
-            new_path.push_str(":/opt/homebrew/opt/llvm/bin");
-            new_path.push_str(":/usr/local/opt/llvm/bin");
-            new_path
-        } else {
-            env_path
-        };
-        env_paths.push(cache_dir.clone());
-
+        let env_path = setup_env_path(&cache_dir)?;
         let workdir = manifest_path
             .and_then(|p| p.parent().map(|x| x.to_path_buf()))
             .or_else(|| env::current_dir().ok())
@@ -76,20 +54,8 @@ impl<'a> Clang<'a> {
                 let target_unknown_vendor = target.replace("-pc-", "-unknown-");
                 let env_target = target.to_lowercase().replace('-', "_");
 
-                symlink_llvm_tool("rust-lld", "lld-link", env_path.clone(), &cache_dir)?;
-                symlink_llvm_tool("llvm-ar", "llvm-lib", env_path.clone(), &cache_dir)?;
-                symlink_llvm_tool("llvm-ar", "llvm-dlltool", env_path.clone(), &cache_dir)?;
-
-                cmd.env("TARGET_CC", "clang");
-                cmd.env("TARGET_CXX", "clang++");
-                cmd.env(format!("CC_{}", env_target), "clang");
-                cmd.env(format!("CXX_{}", env_target), "clang++");
-                cmd.env("TARGET_AR", "llvm-lib");
-                cmd.env(format!("AR_{}", env_target), "llvm-lib");
-                cmd.env(
-                    format!("CARGO_TARGET_{}_LINKER", env_target.to_uppercase()),
-                    "lld-link",
-                );
+                setup_llvm_tools(&env_path, &cache_dir)?;
+                setup_target_compiler_and_linker_env(cmd, &env_target, "clang")?;
 
                 let user_set_c_flags = env::var("CFLAGS").unwrap_or_default();
                 let user_set_cxx_flags = env::var("CXXFLAGS").unwrap_or_default();
@@ -125,28 +91,12 @@ impl<'a> Clang<'a> {
                     dir = sysroot_dir,
                 ));
                 cmd.env("CARGO_ENCODED_RUSTFLAGS", rustflags.encode()?);
-
-                #[cfg(target_os = "macos")]
-                {
-                    let usr_llvm = "/usr/local/opt/llvm/bin".into();
-                    let opt_llvm = "/opt/homebrew/opt/llvm/bin".into();
-                    if cfg!(target_arch = "x86_64") && !env_paths.contains(&usr_llvm) {
-                        env_paths.push(usr_llvm);
-                    } else if cfg!(target_arch = "aarch64") && !env_paths.contains(&opt_llvm) {
-                        env_paths.push(opt_llvm);
-                    }
-                }
-
-                cmd.env("PATH", env::join_paths(env_paths.clone())?);
+                cmd.env("PATH", &env_path);
 
                 // CMake support
-                let cmake_toolchain = self.setup_cmake_toolchain(target, &sysroot_dir)?;
-                cmd.env("CMAKE_GENERATOR", "Ninja")
-                    .env("CMAKE_SYSTEM_NAME", "Windows")
-                    .env(
-                        format!("CMAKE_TOOLCHAIN_FILE_{}", env_target),
-                        cmake_toolchain,
-                    );
+                let cmake_toolchain =
+                    self.setup_cmake_toolchain(target, &sysroot_dir, &cache_dir)?;
+                setup_cmake_env(cmd, target, cmake_toolchain)?;
             }
         }
         Ok(())
@@ -244,22 +194,16 @@ impl<'a> Clang<'a> {
         Ok(())
     }
 
-    fn setup_cmake_toolchain(&self, target: &str, sysroot_dir: &str) -> Result<PathBuf> {
+    fn setup_cmake_toolchain(
+        &self,
+        target: &str,
+        sysroot_dir: &str,
+        cache_dir: &Path,
+    ) -> Result<PathBuf> {
         // x86_64-pc-windows-msvc -> x86_64-windows-msvc
         let target_no_vendor = target.replace("-pc-", "-");
         let target_unknown_vendor = target.replace("-pc-", "-unknown-");
-        let cmake_cache_dir = self
-            .xwin_options
-            .xwin_cache_dir
-            .clone()
-            .unwrap_or_else(|| {
-                dirs::cache_dir()
-                    // If the really is no cache dir, cwd will also do
-                    .unwrap_or_else(|| env::current_dir().expect("Failed to get current dir"))
-                    .join(env!("CARGO_PKG_NAME"))
-            })
-            .join("cmake")
-            .join("clang");
+        let cmake_cache_dir = cache_dir.join("cmake").join("clang");
         fs::create_dir_all(&cmake_cache_dir)?;
 
         let toolchain_file = cmake_cache_dir.join(format!("{}-toolchain.cmake", target));
