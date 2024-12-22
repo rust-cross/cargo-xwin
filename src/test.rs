@@ -6,7 +6,7 @@ use std::process::{self, Command};
 use anyhow::{Context, Result};
 use clap::Parser;
 
-use crate::common::XWinOptions;
+use crate::options::XWinOptions;
 
 /// Execute all unit and integration tests and build examples of a local package
 #[derive(Clone, Debug, Default, Parser)]
