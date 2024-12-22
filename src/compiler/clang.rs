@@ -155,10 +155,10 @@ impl Clang {
         Ok(download_url)
     }
 
-    fn download_msvc_sysroot(
+    fn download_msvc_sysroot_once(
         &self,
         cache_dir: &Path,
-        agent: ureq::Agent,
+        agent: &ureq::Agent,
         download_url: &str,
     ) -> Result<()> {
         use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
@@ -192,6 +192,41 @@ impl Clang {
             eprintln!("✅ Finished downloading MSVC sysroot.");
         }
         Ok(())
+    }
+
+    fn download_msvc_sysroot(
+        &self,
+        cache_dir: &Path,
+        agent: ureq::Agent,
+        download_url: &str,
+    ) -> Result<()> {
+        use std::time::Duration;
+
+        const MAX_RETRIES: u32 = 3;
+        let mut retry_count = 0;
+        let mut last_error = None;
+
+        while retry_count < MAX_RETRIES {
+            if retry_count > 0 {
+                let wait_time = Duration::from_secs(2u64.pow(retry_count - 1));
+                std::thread::sleep(wait_time);
+                eprintln!(
+                    "Retrying download (attempt {}/{})",
+                    retry_count + 1,
+                    MAX_RETRIES
+                );
+            }
+
+            match self.download_msvc_sysroot_once(cache_dir, &agent, download_url) {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    last_error = Some(e);
+                    retry_count += 1;
+                }
+            }
+        }
+
+        Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Failed to download MSVC sysroot")))
     }
 
     fn setup_cmake_toolchain(
