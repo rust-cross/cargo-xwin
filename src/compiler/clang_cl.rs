@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::convert::TryInto;
 use std::env;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -8,12 +9,12 @@ use anyhow::{Context, Result};
 use fs_err as fs;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use path_slash::PathExt;
+use which::which_in;
 use xwin::util::ProgressTarget;
 
 use crate::compiler::common::{
     adjust_canonicalization, default_build_target_from_config, get_rustflags, http_agent,
-    setup_clang_cl_symlink, setup_cmake_env, setup_env_path, setup_llvm_tools,
-    setup_target_compiler_and_linker_env,
+    setup_cmake_env, setup_env_path, setup_llvm_tools, setup_target_compiler_and_linker_env,
 };
 use crate::options::XWinOptions;
 
@@ -59,7 +60,7 @@ impl<'a> ClangCl<'a> {
                 self.setup_msvc_crt(xwin_cache_dir.clone())?;
                 let env_target = target.to_lowercase().replace('-', "_");
 
-                setup_clang_cl_symlink(&cache_dir)?;
+                setup_clang_cl_symlink(&env_path, &cache_dir)?;
                 setup_llvm_tools(&env_path, &cache_dir)?;
                 setup_target_compiler_and_linker_env(cmd, &env_target, "clang-cl")?;
 
@@ -394,4 +395,27 @@ set(CMAKE_USER_MAKE_RULES_OVERRIDE "${{CMAKE_CURRENT_LIST_DIR}}/override.cmake")
         fs::write(&toolchain_file, content)?;
         Ok(toolchain_file)
     }
+}
+
+pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
+    if let Ok(clang) = which_in("clang", Some(env_path), env::current_dir()?) {
+        #[cfg(windows)]
+        {
+            let symlink = cache_dir.join("clang-cl.exe");
+            if symlink.exists() {
+                fs::remove_file(&symlink)?;
+            }
+            std::os::windows::fs::symlink_file(clang, symlink)?;
+        }
+
+        #[cfg(unix)]
+        {
+            let symlink = cache_dir.join("clang-cl");
+            if symlink.exists() {
+                fs::remove_file(&symlink)?;
+            }
+            std::os::unix::fs::symlink(clang, symlink)?;
+        }
+    }
+    Ok(())
 }

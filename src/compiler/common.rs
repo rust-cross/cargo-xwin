@@ -4,7 +4,7 @@ use std::env;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use which::{which, which_in};
+use which::which_in;
 
 pub fn setup_env_path(cache_dir: &Path) -> Result<OsString> {
     let env_path = env::var("PATH").unwrap_or_default();
@@ -17,12 +17,12 @@ pub fn setup_env_path(cache_dir: &Path) -> Result<OsString> {
             && Path::new(&usr_llvm).is_dir()
             && !env_paths.contains(&usr_llvm)
         {
-            env_paths.push(usr_llvm);
+            env_paths.insert(0, usr_llvm);
         } else if cfg!(target_arch = "aarch64")
             && Path::new(&opt_llvm).is_dir()
             && !env_paths.contains(&opt_llvm)
         {
-            env_paths.push(opt_llvm);
+            env_paths.insert(0, opt_llvm);
         }
     }
     env_paths.push(cache_dir.to_path_buf());
@@ -33,29 +33,6 @@ pub fn setup_llvm_tools(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
     symlink_llvm_tool("rust-lld", "lld-link", env_path, cache_dir)?;
     symlink_llvm_tool("llvm-ar", "llvm-lib", env_path, cache_dir)?;
     symlink_llvm_tool("llvm-ar", "llvm-dlltool", env_path, cache_dir)?;
-    Ok(())
-}
-
-pub fn setup_clang_cl_symlink(cache_dir: &Path) -> Result<()> {
-    if let Ok(clang) = which("clang") {
-        #[cfg(windows)]
-        {
-            let symlink = cache_dir.join("clang-cl.exe");
-            if symlink.exists() {
-                fs::remove_file(&symlink)?;
-            }
-            std::os::windows::fs::symlink_file(clang, symlink)?;
-        }
-
-        #[cfg(unix)]
-        {
-            let symlink = cache_dir.join("clang-cl");
-            if symlink.exists() {
-                fs::remove_file(&symlink)?;
-            }
-            std::os::unix::fs::symlink(clang, symlink)?;
-        }
-    }
     Ok(())
 }
 
