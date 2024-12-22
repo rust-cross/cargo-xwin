@@ -179,9 +179,9 @@ impl Clang {
                 .progress_chars("=> "),
         );
         pb.set_prefix("sysroot");
-        pb.set_message("⏬ Downloading");
+        pb.set_message("📥 downloading");
         if pb.is_hidden() {
-            eprintln!("⏬ Start downloading MSVC sysroot...");
+            eprintln!("📥 Start downloading MSVC sysroot...");
         }
         let reader = pb.wrap_read(response.into_reader());
         let tar = XzDecoder::new(reader);
