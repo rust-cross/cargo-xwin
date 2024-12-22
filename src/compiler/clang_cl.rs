@@ -397,6 +397,51 @@ set(CMAKE_USER_MAKE_RULES_OVERRIDE "${{CMAKE_CURRENT_LIST_DIR}}/override.cmake")
     }
 }
 
+#[cfg(target_os = "macos")]
+pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
+    // Try PATH first, but skip system clang
+    let clang = which_in("clang", Some(env_path), env::current_dir()?)
+        .ok()
+        .and_then(|clang| {
+            if clang != PathBuf::from("/usr/bin/clang") {
+                Some(clang)
+            } else {
+                None
+            }
+        });
+
+    // Fall back to xcrun if no suitable clang found in PATH
+    let clang = if let Some(clang) = clang {
+        clang
+    } else {
+        // Try Xcode clang as fallback
+        if let Ok(output) = Command::new("xcrun").args(["--find", "clang"]).output() {
+            if output.status.success() {
+                if let Ok(path) = String::from_utf8(output.stdout) {
+                    PathBuf::from(path.trim())
+                } else {
+                    // No usable clang found
+                    return Ok(());
+                }
+            } else {
+                // No usable clang found
+                return Ok(());
+            }
+        } else {
+            // No usable clang found
+            return Ok(());
+        }
+    };
+
+    let symlink = cache_dir.join("clang-cl");
+    if symlink.exists() {
+        fs::remove_file(&symlink)?;
+    }
+    std::os::unix::fs::symlink(clang, symlink)?;
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
 pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
     if let Ok(clang) = which_in("clang", Some(env_path), env::current_dir()?) {
         #[cfg(windows)]
