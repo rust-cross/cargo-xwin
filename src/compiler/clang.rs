@@ -85,7 +85,12 @@ impl Clang {
                 let mut rustflags = get_rustflags(&workdir, target)?.unwrap_or_default();
                 rustflags
                     .flags
-                    .extend(["-C".to_string(), "linker-flavor=lld-link".to_string()]);
+                    .extend([
+                        "-C".to_string(),
+                        "linker-flavor=lld-link".to_string(),
+                        "-C".to_string(),
+                        "link-arg=-defaultlib:oldnames".to_string(),
+                    ]);
                 rustflags.push(format!(
                     "-Lnative={dir}/lib/{target_unknown_vendor}",
                     dir = sysroot_dir,
