@@ -29,13 +29,6 @@ pub fn setup_env_path(cache_dir: &Path) -> Result<OsString> {
     Ok(env::join_paths(env_paths)?)
 }
 
-pub fn setup_llvm_tools(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
-    symlink_llvm_tool("rust-lld", "lld-link", env_path, cache_dir)?;
-    symlink_llvm_tool("llvm-ar", "llvm-lib", env_path, cache_dir)?;
-    symlink_llvm_tool("llvm-ar", "llvm-dlltool", env_path, cache_dir)?;
-    Ok(())
-}
-
 pub fn setup_target_compiler_and_linker_env(
     cmd: &mut Command,
     env_target: &str,
@@ -76,7 +69,7 @@ pub fn rustc_target_bin_dir() -> Result<PathBuf> {
 }
 
 /// Symlink Rust provided llvm tool component
-fn symlink_llvm_tool(
+pub fn symlink_llvm_tool(
     tool: &str,
     link_name: &str,
     env_path: &OsStr,

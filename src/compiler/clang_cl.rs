@@ -14,7 +14,7 @@ use xwin::util::ProgressTarget;
 
 use crate::compiler::common::{
     adjust_canonicalization, default_build_target_from_config, get_rustflags, http_agent,
-    setup_cmake_env, setup_env_path, setup_llvm_tools, setup_target_compiler_and_linker_env,
+    setup_cmake_env, setup_env_path, setup_target_compiler_and_linker_env,
 };
 use crate::options::XWinOptions;
 
@@ -398,7 +398,7 @@ set(CMAKE_USER_MAKE_RULES_OVERRIDE "${{CMAKE_CURRENT_LIST_DIR}}/override.cmake")
 }
 
 #[cfg(target_os = "macos")]
-pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
+fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
     // Try PATH first, but skip system clang
     let clang = which_in("clang", Some(env_path), env::current_dir()?)
         .ok()
@@ -442,7 +442,7 @@ pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> 
 }
 
 #[cfg(not(target_os = "macos"))]
-pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
+fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
     if let Ok(clang) = which_in("clang", Some(env_path), env::current_dir()?) {
         #[cfg(windows)]
         {
@@ -462,5 +462,14 @@ pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> 
             std::os::unix::fs::symlink(clang, symlink)?;
         }
     }
+    Ok(())
+}
+
+fn setup_llvm_tools(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
+    use crate::compiler::common::symlink_llvm_tool;
+
+    symlink_llvm_tool("rust-lld", "lld-link", env_path, cache_dir)?;
+    symlink_llvm_tool("llvm-ar", "llvm-lib", env_path, cache_dir)?;
+    symlink_llvm_tool("llvm-ar", "llvm-dlltool", env_path, cache_dir)?;
     Ok(())
 }

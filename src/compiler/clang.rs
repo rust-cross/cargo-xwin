@@ -1,4 +1,5 @@
 use std::env;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -9,7 +10,7 @@ use serde::Deserialize;
 
 use crate::compiler::common::{
     adjust_canonicalization, default_build_target_from_config, get_rustflags, http_agent,
-    setup_cmake_env, setup_env_path, setup_llvm_tools, setup_target_compiler_and_linker_env,
+    setup_cmake_env, setup_env_path, setup_target_compiler_and_linker_env,
 };
 
 const MSVC_SYSROOT_REPOSITORY: &str = "trcrsired/windows-msvc-sysroot";
@@ -62,7 +63,7 @@ impl Clang {
                 let sysroot_dir =
                     adjust_canonicalization(msvc_sysroot_dir.to_slash_lossy().to_string());
                 let clang_flags = format!(
-                    "--target={target_no_vendor} -fuse-ld=lld-link -I{dir}/include -I{dir}/include/c++/stl -L{dir}/lib/{target_unknown_vendor}",
+                    "--target={target_no_vendor} -fuse-ld=lld -I{dir}/include -I{dir}/include/c++/stl -L{dir}/lib/{target_unknown_vendor}",
                     dir = sysroot_dir,
                 );
                 cmd.env(
@@ -84,8 +85,6 @@ impl Clang {
 
                 let mut rustflags = get_rustflags(&workdir, target)?.unwrap_or_default();
                 rustflags.flags.extend([
-                    "-C".to_string(),
-                    "linker-flavor=lld-link".to_string(),
                     "-C".to_string(),
                     "link-arg=-defaultlib:oldnames".to_string(),
                 ]);
@@ -263,18 +262,16 @@ set(CMAKE_SYSTEM_PROCESSOR {processor})
 
 set(CMAKE_C_COMPILER clang CACHE FILEPATH "")
 set(CMAKE_CXX_COMPILER clang++ CACHE FILEPATH "")
-set(CMAKE_LINKER lld-link CACHE FILEPATH "")
 set(CMAKE_RC_COMPILER llvm-rc CACHE FILEPATH "")
 
 set(COMPILE_FLAGS
     --target={target_no_vendor}
-    -fuse-ld=lld-link
+    -fuse-ld=lld
     -I{dir}/include
     -I{dir}/include/c++/stl)
 
 set(LINK_FLAGS
-    /manifest:no
-    -libpath:"{dir}/lib/{target_unknown_vendor}")
+    -L"{dir}/lib/{target_unknown_vendor}")
         "#,
             dir = sysroot_dir,
         );
@@ -292,4 +289,12 @@ struct GitHubRelease {
 struct GitHubReleaseAsset {
     browser_download_url: String,
     name: String,
+}
+
+fn setup_llvm_tools(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
+    use crate::compiler::common::symlink_llvm_tool;
+
+    symlink_llvm_tool("rust-lld", "lld", env_path, cache_dir)?;
+    symlink_llvm_tool("llvm-ar", "llvm-dlltool", env_path, cache_dir)?;
+    Ok(())
 }
