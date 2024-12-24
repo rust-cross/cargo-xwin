@@ -76,11 +76,11 @@ impl<'a> ClangCl<'a> {
                 cmd.env("CL_FLAGS", &cl_flags);
                 cmd.env(
                     format!("CFLAGS_{env_target}"),
-                    &format!("{cl_flags} {user_set_c_flags}",),
+                    format!("{cl_flags} {user_set_c_flags}",),
                 );
                 cmd.env(
                     format!("CXXFLAGS_{env_target}"),
-                    &format!("{cl_flags} {user_set_cxx_flags}",),
+                    format!("{cl_flags} {user_set_cxx_flags}",),
                 );
 
                 cmd.env(
@@ -437,7 +437,7 @@ pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> 
     if symlink.exists() {
         fs::remove_file(&symlink)?;
     }
-    std::os::unix::fs::symlink(clang, symlink)?;
+    fs_err::os::unix::fs::symlink(clang, symlink)?;
     Ok(())
 }
 
@@ -450,7 +450,7 @@ pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> 
             if symlink.exists() {
                 fs::remove_file(&symlink)?;
             }
-            std::os::windows::fs::symlink_file(clang, symlink)?;
+            fs_err::os::windows::fs::symlink_file(clang, symlink)?;
         }
 
         #[cfg(unix)]
@@ -459,7 +459,7 @@ pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> 
             if symlink.exists() {
                 fs::remove_file(&symlink)?;
             }
-            std::os::unix::fs::symlink(clang, symlink)?;
+            fs_err::os::unix::fs::symlink(clang, symlink)?;
         }
     }
     Ok(())
