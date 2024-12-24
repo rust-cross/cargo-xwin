@@ -36,11 +36,7 @@ pub fn setup_llvm_tools(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-pub fn setup_target_compiler_and_linker_env(
-    cmd: &mut Command,
-    env_target: &str,
-    compiler: &str,
-) -> Result<()> {
+pub fn setup_target_compiler_and_linker_env(cmd: &mut Command, env_target: &str, compiler: &str) {
     cmd.env("TARGET_CC", compiler);
     cmd.env("TARGET_CXX", compiler);
     cmd.env(format!("CC_{}", env_target), compiler);
@@ -51,10 +47,9 @@ pub fn setup_target_compiler_and_linker_env(
         format!("CARGO_TARGET_{}_LINKER", env_target.to_uppercase()),
         "lld-link",
     );
-    Ok(())
 }
 
-pub fn setup_cmake_env(cmd: &mut Command, target: &str, toolchain_path: PathBuf) -> Result<()> {
+pub fn setup_cmake_env(cmd: &mut Command, target: &str, toolchain_path: PathBuf) {
     let env_target = target.to_lowercase().replace('-', "_");
     cmd.env("CMAKE_GENERATOR", "Ninja")
         .env("CMAKE_SYSTEM_NAME", "Windows")
@@ -62,7 +57,6 @@ pub fn setup_cmake_env(cmd: &mut Command, target: &str, toolchain_path: PathBuf)
             format!("CMAKE_TOOLCHAIN_FILE_{}", env_target),
             toolchain_path,
         );
-    Ok(())
 }
 
 pub fn rustc_target_bin_dir() -> Result<PathBuf> {
