@@ -67,11 +67,11 @@ impl Clang {
                 );
                 cmd.env(
                     format!("CFLAGS_{env_target}"),
-                    &format!("{clang_flags} {user_set_c_flags}",),
+                    format!("{clang_flags} {user_set_c_flags}",),
                 );
                 cmd.env(
                     format!("CXXFLAGS_{env_target}"),
-                    &format!("{clang_flags} {user_set_cxx_flags}",),
+                    format!("{clang_flags} {user_set_cxx_flags}",),
                 );
                 cmd.env(
                     format!("BINDGEN_EXTRA_CLANG_ARGS_{env_target}"),

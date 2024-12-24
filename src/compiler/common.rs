@@ -92,7 +92,7 @@ fn symlink_llvm_tool(
                 if symlink.exists() {
                     fs::remove_file(&symlink)?;
                 }
-                std::os::windows::fs::symlink_file(rust_tool, symlink)?;
+                fs_err::os::windows::fs::symlink_file(rust_tool, symlink)?;
             }
 
             #[cfg(unix)]
@@ -101,7 +101,7 @@ fn symlink_llvm_tool(
                 if symlink.exists() {
                     fs::remove_file(&symlink)?;
                 }
-                std::os::unix::fs::symlink(rust_tool, symlink)?;
+                fs_err::os::unix::fs::symlink(rust_tool, symlink)?;
             }
         }
     }
@@ -164,7 +164,7 @@ fn tls_ca_bundle() -> Option<std::ffi::OsString> {
 
 #[cfg(all(feature = "native-tls", not(feature = "rustls")))]
 pub fn http_agent() -> Result<ureq::Agent> {
-    use std::fs::File;
+    use fs_err::File;
     use std::io;
     use std::sync::Arc;
 
@@ -183,7 +183,7 @@ pub fn http_agent() -> Result<ureq::Agent> {
 
 #[cfg(feature = "rustls")]
 pub fn http_agent() -> Result<ureq::Agent> {
-    use std::fs::File;
+    use fs_err::File;
     use std::io;
     use std::sync::Arc;
 
