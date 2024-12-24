@@ -5,6 +5,7 @@ build-backend = "maturin"
 [project]
 name = "cargo-xwin"
 dependencies = ["ninja"]
+dynamic = ["version"]
 
 [tool.maturin]
 bindings = "bin"
