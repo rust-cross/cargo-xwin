@@ -38,8 +38,10 @@ impl<'a> ClangCl<'a> {
         let env_path = setup_env_path(&cache_dir)?;
 
         let xwin_cache_dir = cache_dir.join("xwin");
-        fs::create_dir_all(&xwin_cache_dir)?;
-        let xwin_cache_dir = xwin_cache_dir.canonicalize()?;
+        fs::create_dir_all(&xwin_cache_dir).context("Failed to create xwin cache dir")?;
+        let xwin_cache_dir = xwin_cache_dir
+            .canonicalize()
+            .context("Failed to canonicalize xwin cache dir")?;
 
         let workdir = manifest_path
             .and_then(|p| p.parent().map(|x| x.to_path_buf()))
@@ -57,12 +59,14 @@ impl<'a> ClangCl<'a> {
 
         for target in &targets {
             if target.contains("msvc") {
-                self.setup_msvc_crt(xwin_cache_dir.clone())?;
+                self.setup_msvc_crt(xwin_cache_dir.clone())
+                    .context("Failed to setup MSVC CRT")?;
                 let env_target = target.to_lowercase().replace('-', "_");
 
-                setup_clang_cl_symlink(&env_path, &cache_dir)?;
-                setup_llvm_tools(&env_path, &cache_dir)?;
-                setup_target_compiler_and_linker_env(cmd, &env_target, "clang-cl")?;
+                setup_clang_cl_symlink(&env_path, &cache_dir)
+                    .context("Failed to setup clang-cl symlink")?;
+                setup_llvm_tools(&env_path, &cache_dir).context("Failed to setup LLVM tools")?;
+                setup_target_compiler_and_linker_env(cmd, &env_target, "clang-cl");
 
                 let user_set_cl_flags = env::var("CL_FLAGS").unwrap_or_default();
                 let user_set_c_flags = env::var("CFLAGS").unwrap_or_default();
@@ -131,8 +135,10 @@ impl<'a> ClangCl<'a> {
                 cmd.env("PATH", &env_path);
 
                 // CMake support
-                let cmake_toolchain = self.setup_cmake_toolchain(target, &xwin_cache_dir)?;
-                setup_cmake_env(cmd, target, cmake_toolchain)?;
+                let cmake_toolchain = self
+                    .setup_cmake_toolchain(target, &xwin_cache_dir)
+                    .with_context(|| format!("Failed to setup CMake toolchain for {}", target))?;
+                setup_cmake_env(cmd, target, cmake_toolchain);
             }
         }
         Ok(())

@@ -48,14 +48,16 @@ impl Clang {
 
         for target in &targets {
             if target.contains("msvc") {
-                let msvc_sysroot_dir = self.setup_msvc_sysroot(cache_dir.clone())?;
+                let msvc_sysroot_dir = self
+                    .setup_msvc_sysroot(cache_dir.clone())
+                    .context("Failed to setup MSVC sysroot")?;
                 // x86_64-pc-windows-msvc -> x86_64-windows-msvc
                 let target_no_vendor = target.replace("-pc-", "-");
                 let target_unknown_vendor = target.replace("-pc-", "-unknown-");
                 let env_target = target.to_lowercase().replace('-', "_");
 
-                setup_llvm_tools(&env_path, &cache_dir)?;
-                setup_target_compiler_and_linker_env(cmd, &env_target, "clang")?;
+                setup_llvm_tools(&env_path, &cache_dir).context("Failed to setup LLVM tools")?;
+                setup_target_compiler_and_linker_env(cmd, &env_target, "clang");
 
                 let user_set_c_flags = env::var("CFLAGS").unwrap_or_default();
                 let user_set_cxx_flags = env::var("CXXFLAGS").unwrap_or_default();
@@ -97,9 +99,10 @@ impl Clang {
                 cmd.env("PATH", &env_path);
 
                 // CMake support
-                let cmake_toolchain =
-                    self.setup_cmake_toolchain(target, &sysroot_dir, &cache_dir)?;
-                setup_cmake_env(cmd, target, cmake_toolchain)?;
+                let cmake_toolchain = self
+                    .setup_cmake_toolchain(target, &sysroot_dir, &cache_dir)
+                    .with_context(|| format!("Failed to setup CMake toolchain for {}", target))?;
+                setup_cmake_env(cmd, target, cmake_toolchain);
             }
         }
         Ok(())
