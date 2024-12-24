@@ -108,6 +108,15 @@ impl Clang {
         Ok(())
     }
 
+    /// Download and unpack the latest MSVC sysroot from GitHub Releases.
+    ///
+    /// If the sysroot is already downloaded and unpacked, it will be reused.
+    /// The sysroot will be stored in `<cache_dir>/windows-msvc-sysroot`.
+    /// A file named `DONE` will be created in the same directory with the
+    /// download URL as its content.
+    ///
+    /// The environment variable `XWIN_MSVC_SYSROOT_DOWNLOAD_URL` can be used
+    /// to override the download URL.
     fn setup_msvc_sysroot(&self, cache_dir: PathBuf) -> Result<PathBuf> {
         let msvc_sysroot_dir = cache_dir.join("windows-msvc-sysroot");
         let done_mark_file = msvc_sysroot_dir.join("DONE");
@@ -133,6 +142,12 @@ impl Clang {
         Ok(msvc_sysroot_dir)
     }
 
+    /// Retrieves the latest MSVC sysroot download URL from GitHub Releases.
+    ///
+    /// The function uses the `ureq` agent to make an HTTP GET request to the GitHub API. If a
+    /// `GITHUB_TOKEN` environment variable is present, it includes it as a Bearer token for
+    /// authentication.
+    ///
     fn get_latest_msvc_sysroot_download_url(&self, agent: ureq::Agent) -> Result<String> {
         if let Ok(url) = env::var("XWIN_MSVC_SYSROOT_DOWNLOAD_URL") {
             return Ok(url);

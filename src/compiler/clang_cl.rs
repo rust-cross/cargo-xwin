@@ -144,6 +144,7 @@ impl<'a> ClangCl<'a> {
         Ok(())
     }
 
+    /// Downloads and extracts the specified MSVC CRT components into the specified `cache_dir`.
     fn setup_msvc_crt(&self, cache_dir: PathBuf) -> Result<()> {
         let done_mark_file = cache_dir.join("DONE");
         let xwin_arches: HashSet<_> = self
@@ -403,6 +404,14 @@ set(CMAKE_USER_MAKE_RULES_OVERRIDE "${{CMAKE_CURRENT_LIST_DIR}}/override.cmake")
     }
 }
 
+/// Creates a symlink to the `clang` binary in `cache_dir` and names it
+/// `clang-cl`. This is necessary because the `clang-cl` binary doesn't
+/// exist on macOS, but `clang` does and can be used as a drop-in
+/// replacement for `clang-cl`.
+///
+/// The `clang` binary is first searched for in `PATH` (skipping the system
+/// clang), and if no suitable clang is found, the Xcode clang is tried as
+/// a fallback. If no usable clang is found, the function does nothing.
 #[cfg(target_os = "macos")]
 pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
     // Try PATH first, but skip system clang

@@ -6,6 +6,11 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use which::which_in;
 
+/// Sets up the environment path by adding necessary directories to the existing `PATH`.
+///
+/// On macOS, it checks for specific LLVM installation paths based on the architecture
+/// and adds them to the front of the environment paths if they exist.
+/// It then appends the `cache_dir` provided to the list of paths.
 pub fn setup_env_path(cache_dir: &Path) -> Result<OsString> {
     let env_path = env::var("PATH").unwrap_or_default();
     let mut env_paths: Vec<_> = env::split_paths(&env_path).collect();
@@ -29,6 +34,14 @@ pub fn setup_env_path(cache_dir: &Path) -> Result<OsString> {
     Ok(env::join_paths(env_paths)?)
 }
 
+/// Sets up symlinks for LLVM tools in the provided environment path and cache directory.
+///
+/// This function creates symlinks for the following tools:
+/// - `rust-lld` to `lld-link`
+/// - `llvm-ar` to `llvm-lib`
+/// - `llvm-ar` to `llvm-dlltool`
+///
+/// These symlinks are established if they do not already exist in the specified environment path.
 pub fn setup_llvm_tools(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
     symlink_llvm_tool("rust-lld", "lld-link", env_path, cache_dir)?;
     symlink_llvm_tool("llvm-ar", "llvm-lib", env_path, cache_dir)?;
@@ -36,6 +49,15 @@ pub fn setup_llvm_tools(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Configures the environment variables for the target compiler and linker.
+///
+/// This function sets up environment variables for the specified target compiler and linker,
+/// allowing the build system to correctly use the desired tools for compilation and linking.
+/// It sets up the following environment variables:
+/// - `TARGET_CC` and `TARGET_CXX` with the provided compiler.
+/// - `CC_<env_target>` and `CXX_<env_target>` with the provided compiler.
+/// - `TARGET_AR` and `AR_<env_target>` with "llvm-lib".
+/// - `CARGO_TARGET_<env_target>_LINKER` with "lld-link".
 pub fn setup_target_compiler_and_linker_env(cmd: &mut Command, env_target: &str, compiler: &str) {
     cmd.env("TARGET_CC", compiler);
     cmd.env("TARGET_CXX", compiler);
@@ -49,6 +71,13 @@ pub fn setup_target_compiler_and_linker_env(cmd: &mut Command, env_target: &str,
     );
 }
 
+/// Configures the environment variables for CMake to use the Ninja generator and Windows system.
+///
+/// This function sets up the following environment variables:
+/// - `CMAKE_GENERATOR` as "Ninja".
+/// - `CMAKE_SYSTEM_NAME` as "Windows".
+/// - `CMAKE_TOOLCHAIN_FILE_<env_target>` with the provided toolchain path, where `<env_target>` is the target string
+///   converted to lowercase and hyphens replaced with underscores.
 pub fn setup_cmake_env(cmd: &mut Command, target: &str, toolchain_path: PathBuf) {
     let env_target = target.to_lowercase().replace('-', "_");
     cmd.env("CMAKE_GENERATOR", "Ninja")
