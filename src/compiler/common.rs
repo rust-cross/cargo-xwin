@@ -112,7 +112,7 @@ fn symlink_llvm_tool(
             #[cfg(windows)]
             {
                 let symlink = cache_dir.join(format!("{}.exe", link_name));
-                if symlink.exists() {
+                if symlink.is_symlink() || symlink.is_file() {
                     fs::remove_file(&symlink)?;
                 }
                 fs_err::os::windows::fs::symlink_file(rust_tool, symlink)?;
@@ -121,7 +121,7 @@ fn symlink_llvm_tool(
             #[cfg(unix)]
             {
                 let symlink = cache_dir.join(link_name);
-                if symlink.exists() {
+                if symlink.is_symlink() || symlink.is_file() {
                     fs::remove_file(&symlink)?;
                 }
                 fs_err::os::unix::fs::symlink(rust_tool, symlink)?;

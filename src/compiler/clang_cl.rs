@@ -449,7 +449,7 @@ pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> 
     };
 
     let symlink = cache_dir.join("clang-cl");
-    if symlink.exists() {
+    if symlink.is_symlink() || symlink.is_file() {
         fs::remove_file(&symlink)?;
     }
     fs_err::os::unix::fs::symlink(clang, symlink)?;
