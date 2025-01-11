@@ -330,6 +330,7 @@ impl<'a> ClangCl<'a> {
             "i586" | "i686" => "X86",
             "x86_64" => "AMD64",
             "aarch64" => "ARM64",
+            "arm64ec" => "ARM64EC",
             _ => target_arch,
         };
         let xwin_arch = match target_arch {

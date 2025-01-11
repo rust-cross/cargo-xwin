@@ -271,6 +271,7 @@ impl Clang {
             "i586" | "i686" => "X86",
             "x86_64" => "AMD64",
             "aarch64" => "ARM64",
+            "arm64ec" => "ARM64EC",
             _ => target_arch,
         };
 
@@ -283,6 +284,8 @@ set(CMAKE_C_COMPILER clang CACHE FILEPATH "")
 set(CMAKE_CXX_COMPILER clang++ CACHE FILEPATH "")
 set(CMAKE_LINKER lld-link CACHE FILEPATH "")
 set(CMAKE_RC_COMPILER llvm-rc CACHE FILEPATH "")
+set(CMAKE_C_COMPILER_TARGET {target} CACHE STRING "")
+set(CMAKE_CXX_COMPILER_TARGET {target} CACHE STRING "")
 
 set(COMPILE_FLAGS
     --target={target_no_vendor}
