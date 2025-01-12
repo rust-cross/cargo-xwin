@@ -1,6 +1,7 @@
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use fs_err as fs;
@@ -202,15 +203,19 @@ impl Clang {
         pb.set_prefix("sysroot");
         pb.set_message("📥 downloading");
         if pb.is_hidden() {
-            eprintln!("📥 Start downloading MSVC sysroot...");
+            eprintln!("📥 Downloading MSVC sysroot...");
         }
+        let start_time = Instant::now();
         let reader = pb.wrap_read(response.into_reader());
         let tar = XzDecoder::new(reader);
         let mut archive = tar::Archive::new(tar);
         archive.unpack(cache_dir)?;
         pb.finish_with_message("Download completed");
         if pb.is_hidden() {
-            eprintln!("✅ Finished downloading MSVC sysroot.");
+            // Display elapsed time in human-readable format to seconds only
+            let elapsed =
+                humantime::format_duration(Duration::from_secs(start_time.elapsed().as_secs()));
+            eprintln!("✅ Downloaded MSVC sysroot in {elapsed}.");
         }
         Ok(())
     }
