@@ -4,6 +4,7 @@ use std::env;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use fs_err as fs;
@@ -248,8 +249,9 @@ impl<'a> ClangCl<'a> {
 
         mp.set_move_cursor(true);
         if mp.is_hidden() {
-            eprintln!("⏬ Start downloading MSVC CRT...");
+            eprintln!("⏬ Downloading MSVC CRT...");
         }
+        let start_time = Instant::now();
         ctx.execute(
             pkgs,
             work_items,
@@ -277,7 +279,10 @@ impl<'a> ClangCl<'a> {
             let _ = fs::remove_dir_all(unpack);
         }
         if mp.is_hidden() {
-            eprintln!("✅ Finished downloading MSVC CRT.");
+            // Display elapsed time in human-readable format to seconds only
+            let elapsed =
+                humantime::format_duration(Duration::from_secs(start_time.elapsed().as_secs()));
+            eprintln!("✅ Downloaded MSVC CRT in {elapsed}.");
         }
         Ok(())
     }
