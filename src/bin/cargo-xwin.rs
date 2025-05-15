@@ -2,7 +2,7 @@ use std::env;
 use std::ffi::OsString;
 use std::process::Command;
 
-use cargo_xwin::{Build, Check, Clippy, Run, Rustc, Test};
+use cargo_xwin::{Build, Check, Clippy, Doc, Run, Rustc, Test};
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
@@ -29,6 +29,7 @@ pub enum Opt {
     Build(Build),
     Check(Check),
     Clippy(Clippy),
+    Doc(Doc),
     #[command(name = "run", alias = "r")]
     Run(Run),
     #[command(name = "rustc")]
@@ -49,6 +50,7 @@ fn main() -> anyhow::Result<()> {
             Opt::Test(test) => test.execute()?,
             Opt::Check(check) => check.execute()?,
             Opt::Clippy(clippy) => clippy.execute()?,
+            Opt::Doc(doc) => doc.execute()?,
         },
         Cli::External(args) => {
             let mut child = Command::new(env::var_os("CARGO").unwrap_or("cargo".into()))

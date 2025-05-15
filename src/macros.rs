@@ -91,4 +91,5 @@ macro_rules! cargo_command {
 cargo_command!(Build);
 cargo_command!(Check);
 cargo_command!(Clippy);
+cargo_command!(Doc);
 cargo_command!(Rustc);
