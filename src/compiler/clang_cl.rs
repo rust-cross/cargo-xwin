@@ -85,7 +85,7 @@ impl<'a> ClangCl<'a> {
                 );
                 cmd.env(
                     format!("CXXFLAGS_{env_target}"),
-                    format!("{cl_flags} {user_set_cxx_flags}",),
+                    format!("{cl_flags} /EHsc {user_set_cxx_flags}",),
                 );
 
                 cmd.env(
@@ -376,7 +376,7 @@ set(_CMAKE_C_FLAGS_INITIAL "${{CMAKE_C_FLAGS}}" CACHE STRING "")
 set(CMAKE_C_FLAGS "${{_CMAKE_C_FLAGS_INITIAL}} ${{COMPILE_FLAGS}}" CACHE STRING "" FORCE)
 
 set(_CMAKE_CXX_FLAGS_INITIAL "${{CMAKE_CXX_FLAGS}}" CACHE STRING "")
-set(CMAKE_CXX_FLAGS "${{_CMAKE_CXX_FLAGS_INITIAL}} ${{COMPILE_FLAGS}}" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS "${{_CMAKE_CXX_FLAGS_INITIAL}} ${{COMPILE_FLAGS}} /EHsc" CACHE STRING "" FORCE)
 
 string(REPLACE ";" " " LINK_FLAGS "${{LINK_FLAGS}}")
 
