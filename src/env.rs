@@ -53,9 +53,13 @@ impl Env {
 
         for (key, value) in env.get_envs() {
             println!(
-                "{}=\"{}\"",
+                "export {}=\"{}\"",
                 key.to_string_lossy(),
-                value.unwrap_or_default().to_string_lossy()
+                value
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .escape_debug()
+                    .collect::<String>()
             );
         }
 
