@@ -55,11 +55,7 @@ impl Env {
             println!(
                 "export {}=\"{}\"",
                 key.to_string_lossy(),
-                value
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .escape_debug()
-                    .collect::<String>()
+                value.unwrap_or_default().to_string_lossy()
             );
         }
 
