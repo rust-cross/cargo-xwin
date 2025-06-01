@@ -53,7 +53,7 @@ impl Env {
 
         for (key, value) in env.get_envs() {
             println!(
-                "{}={}",
+                "{}=\"{}\"",
                 key.to_string_lossy(),
                 value.unwrap_or_default().to_string_lossy()
             );
