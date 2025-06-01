@@ -10,10 +10,7 @@ use crate::options::XWinOptions;
 
 /// Print environment variables required for cross-compilation
 #[derive(Clone, Debug, Default, Parser)]
-#[command(
-    display_order = 1,
-    after_help = "Run `cargo help test` for more detailed information.\nRun `cargo test -- --help` for test binary options."
-)]
+#[command(display_order = 1)]
 pub struct Env {
     #[command(flatten)]
     pub xwin: XWinOptions,
@@ -21,7 +18,7 @@ pub struct Env {
     #[command(flatten)]
     pub cargo: cargo_options::CommonOptions,
 
-    #[arg(long, value_name = "PATH")]
+    #[arg(long, value_name = "PATH", help_heading = cargo_options::heading::MANIFEST_OPTIONS)]
     pub manifest_path: Option<PathBuf>,
 }
 
