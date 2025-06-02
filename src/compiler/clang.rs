@@ -15,7 +15,7 @@ use crate::compiler::common::{
 
 const MSVC_SYSROOT_REPOSITORY: &str = "trcrsired/windows-msvc-sysroot";
 const MSVC_SYSROOT_ASSET_NAME: &str = "windows-msvc-sysroot.tar.xz";
-const FALLBACK_DOWNLOAD_URL: &str = "https://github.com/trcrsired/windows-msvc-sysroot/releases/download/2024-12-25/windows-msvc-sysroot.tar.xz";
+const FALLBACK_DOWNLOAD_URL: &str = "https://github.com/trcrsired/windows-msvc-sysroot/releases/download/2025-01-22/windows-msvc-sysroot.tar.xz";
 
 #[derive(Debug)]
 pub struct Clang;
@@ -65,7 +65,7 @@ impl Clang {
                 let sysroot_dir =
                     adjust_canonicalization(msvc_sysroot_dir.to_slash_lossy().to_string());
                 let clang_flags = format!(
-                    "--target={target_no_vendor} -fuse-ld=lld-link -I{dir}/include -I{dir}/include/c++/stl -L{dir}/lib/{target_unknown_vendor}",
+                    "--target={target_no_vendor} -fuse-ld=lld-link -I{dir}/include -I{dir}/include/c++/stl -I{dir}/include/__msvc_vcruntime_intrinsics -L{dir}/lib/{target_unknown_vendor}",
                     dir = sysroot_dir,
                 );
                 cmd.env(
@@ -78,11 +78,11 @@ impl Clang {
                 );
                 cmd.env(
                     format!("BINDGEN_EXTRA_CLANG_ARGS_{env_target}"),
-                    format!("-I{dir}/include -I{dir}/include/c++/stl", dir = sysroot_dir),
+                    format!("-I{dir}/include -I{dir}/include/c++/stl -I{dir}/include/__msvc_vcruntime_intrinsics", dir = sysroot_dir),
                 );
                 cmd.env(
                     "RCFLAGS",
-                    format!("-I{dir}/include -I{dir}/include/c++/stl", dir = sysroot_dir),
+                    format!("-I{dir}/include -I{dir}/include/c++/stl -I{dir}/include/__msvc_vcruntime_intrinsics", dir = sysroot_dir),
                 );
 
                 let mut rustflags = get_rustflags(&workdir, target)?.unwrap_or_default();
@@ -296,7 +296,8 @@ set(COMPILE_FLAGS
     --target={target_no_vendor}
     -fuse-ld=lld-link
     -I{dir}/include
-    -I{dir}/include/c++/stl)
+    -I{dir}/include/c++/stl
+    -I{dir}/include/__msvc_vcruntime_intrinsics)
 
 set(LINK_FLAGS
     /manifest:no
