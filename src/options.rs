@@ -58,6 +58,19 @@ pub struct XWinOptions {
     #[arg(long, env = "XWIN_VERSION", default_value = "16", hide = true)]
     pub xwin_version: String,
 
+    /// If specified, this is the version of the SDK that the user wishes to use
+    /// instead of defaulting to the latest SDK available in the the manifest
+    #[arg(long, env = "XWIN_SDK_VERSION")]
+    pub xwin_sdk_version: Option<String>,
+    /// If specified, this is the version of the MSVCRT that the user wishes to use
+    /// instead of defaulting to the latest MSVCRT available in the the manifest
+    #[arg(long, env = "XWIN_CRT_VERSION")]
+    pub xwin_crt_version: Option<String>,
+
+    /// Whether to include the Active Template Library (ATL) in the installation
+    #[arg(long, env = "XWIN_INCLUDE_ATL")]
+    pub xwin_include_atl: bool,
+
     /// Whether or not to include debug libs
     #[arg(long, env = "XWIN_INCLUDE_DEBUG_LIBS", hide = true)]
     pub xwin_include_debug_libs: bool,
@@ -74,6 +87,9 @@ impl Default for XWinOptions {
             xwin_arch: vec![xwin::Arch::X86_64, xwin::Arch::Aarch64],
             xwin_variant: vec![xwin::Variant::Desktop],
             xwin_version: "16".to_string(),
+            xwin_sdk_version: None,
+            xwin_crt_version: None,
+            xwin_include_atl: false,
             xwin_include_debug_libs: false,
             xwin_include_debug_symbols: false,
             cross_compiler: CrossCompiler::ClangCl,

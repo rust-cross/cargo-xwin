@@ -61,6 +61,9 @@ The Microsoft CRT and Windows SDK can be customized using the following environm
 | `XWIN_ARCH`                  | `--xwin-arch`                  | The architectures to include, defaults to `x86_64,aarch64`, possible values: x86, x86_64, aarch, aarch64           |
 | `XWIN_VARIANT`               | `--xwin-variant`               | The variants to include, defaults to `desktop`, possible values: desktop, onecore, spectre                         |
 | `XWIN_VERSION`               | `--xwin-version`               | The version to retrieve, defaults to 16, can either be a major version of 15 or 16, or a `<major>.<minor>` version |
+| `XWIN_SDK_VERSION`           | `--xwin-sdk-version`           | The SDK version to retrieve, defaults to the latest version                                                        |
+| `XWIN_CRT_VERSION`           | `--xwin-crt-version`           | The CRT version to retrieve, defaults to the latest version                                                        |
+| `XWIN_INCLUDE_ATL`           | `--xwin-include-atl`           | Whether to include the Active Template Library (ATL) in the installation                                           |
 | `XWIN_CACHE_DIR`             | `--xwin-cache-dir`             | xwin cache directory to put CRT and SDK files                                                                      |
 | `XWIN_INCLUDE_DEBUG_LIBS`    | `--xwin-include-debug-libs`    | Whether or not to include debug libs in installation (default false).                                              |
 | `XWIN_INCLUDE_DEBUG_SYMBOLS` | `--xwin-include-debug-symbols` | Whether or not to include debug symbols (PDBs) in installation (default false).                                    |

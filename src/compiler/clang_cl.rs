@@ -183,7 +183,14 @@ impl<'a> ClangCl<'a> {
             .xwin_variant
             .iter()
             .fold(0, |acc, var| acc | *var as u32);
-        let pruned = xwin::prune_pkg_list(&pkg_manifest, arches, variants, false, None, None)?;
+        let pruned = xwin::prune_pkg_list(
+            &pkg_manifest,
+            arches,
+            variants,
+            self.xwin_options.xwin_include_atl,
+            self.xwin_options.xwin_sdk_version.clone(),
+            self.xwin_options.xwin_crt_version.clone(),
+        )?;
         let op = xwin::Ops::Splat(xwin::SplatConfig {
             include_debug_libs: self.xwin_options.xwin_include_debug_libs,
             include_debug_symbols: self.xwin_options.xwin_include_debug_symbols,
