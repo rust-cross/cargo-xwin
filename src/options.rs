@@ -3,8 +3,8 @@ use std::process::Command;
 
 use anyhow::Result;
 use clap::{
-    builder::{PossibleValuesParser, TypedValueParser as _},
     Parser, ValueEnum,
+    builder::{PossibleValuesParser, TypedValueParser as _},
 };
 use fs_err as fs;
 

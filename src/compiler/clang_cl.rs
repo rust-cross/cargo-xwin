@@ -168,8 +168,8 @@ impl<'a> ClangCl<'a> {
 
         let agent = http_agent()?;
         let xwin_dir = adjust_canonicalization(cache_dir.to_slash_lossy().to_string());
-        // timeout defaults to 60s
-        let ctx = xwin::Ctx::with_dir(xwin::PathBuf::from(xwin_dir), draw_target, agent)?;
+        // timeout defaults to 60s, retry 3 times
+        let ctx = xwin::Ctx::with_dir(xwin::PathBuf::from(xwin_dir), draw_target, agent, 3)?;
         let ctx = std::sync::Arc::new(ctx);
         let pkg_manifest = self.load_manifest(&ctx, draw_target)?;
 
@@ -188,6 +188,7 @@ impl<'a> ClangCl<'a> {
             arches,
             variants,
             self.xwin_options.xwin_include_atl,
+            false,
             self.xwin_options.xwin_sdk_version.clone(),
             self.xwin_options.xwin_crt_version.clone(),
         )?;
@@ -238,6 +239,19 @@ impl<'a> ClangCl<'a> {
                 }
                 xwin::PayloadKind::SdkStoreLibs => "SDK.libs.store.all".to_owned(),
                 xwin::PayloadKind::Ucrt => "SDK.ucrt.all".to_owned(),
+                xwin::PayloadKind::VcrDebug => {
+                    let prefix = match pay.filename.to_string().contains("UCRT") {
+                        true => "UCRT.Debug",
+                        false => "VC.Runtime.Debug"
+                    };
+
+                    format!(
+                        "{}.{}",
+                        prefix,
+                        pay.target_arch.map_or("all", |ta| ta.as_str())
+                    )
+                }
+
             };
 
             let pb = mp.add(
@@ -264,6 +278,7 @@ impl<'a> ClangCl<'a> {
             work_items,
             pruned.crt_version,
             pruned.sdk_version,
+            None,
             arches,
             variants,
             op,
@@ -443,21 +458,24 @@ pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> 
         clang
     } else {
         // Try Xcode clang as fallback
-        if let Ok(output) = Command::new("xcrun").args(["--find", "clang"]).output() {
-            if output.status.success() {
-                if let Ok(path) = String::from_utf8(output.stdout) {
-                    PathBuf::from(path.trim())
+        match Command::new("xcrun").args(["--find", "clang"]).output() {
+            Ok(output) => {
+                if output.status.success() {
+                    if let Ok(path) = String::from_utf8(output.stdout) {
+                        PathBuf::from(path.trim())
+                    } else {
+                        // No usable clang found
+                        return Ok(());
+                    }
                 } else {
                     // No usable clang found
                     return Ok(());
                 }
-            } else {
+            }
+            _ => {
                 // No usable clang found
                 return Ok(());
             }
-        } else {
-            // No usable clang found
-            return Ok(());
         }
     };
 

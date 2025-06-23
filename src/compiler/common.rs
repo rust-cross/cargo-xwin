@@ -178,55 +178,38 @@ pub fn get_rustflags(workdir: &Path, target: &str) -> Result<Option<cargo_config
     Ok(rustflags)
 }
 
-#[cfg(any(feature = "native-tls", feature = "rustls"))]
-fn tls_ca_bundle() -> Option<std::ffi::OsString> {
-    env::var_os("REQUESTS_CA_BUNDLE")
-        .or_else(|| env::var_os("CURL_CA_BUNDLE"))
-        .or_else(|| env::var_os("SSL_CERT_FILE"))
-}
-
-#[cfg(all(feature = "native-tls", not(feature = "rustls")))]
 pub fn http_agent() -> Result<ureq::Agent> {
-    use fs_err::File;
-    use std::io;
-    use std::sync::Arc;
-
-    let mut builder = ureq::builder().try_proxy_from_env(true);
-    let mut tls_builder = native_tls_crate::TlsConnector::builder();
-    if let Some(ca_bundle) = tls_ca_bundle() {
-        let mut reader = io::BufReader::new(File::open(ca_bundle)?);
-        for cert in rustls_pemfile::certs(&mut reader) {
-            let cert = cert?;
-            tls_builder.add_root_certificate(native_tls_crate::Certificate::from_pem(&cert)?);
-        }
+    #[cfg(feature = "native-tls")]
+    {
+        let builder = ureq::config::Config::builder();
+        let agent = builder
+            .tls_config(
+                ureq::tls::TlsConfig::builder()
+                    .provider(ureq::tls::TlsProvider::NativeTls)
+                    .root_certs(ureq::tls::RootCerts::PlatformVerifier)
+                    .build(),
+            )
+            .build()
+            .new_agent();
+        return Ok(agent);
     }
-    builder = builder.tls_connector(Arc::new(tls_builder.build()?));
-    Ok(builder.build())
-}
-
-#[cfg(feature = "rustls")]
-pub fn http_agent() -> Result<ureq::Agent> {
-    use fs_err::File;
-    use std::io;
-    use std::sync::Arc;
-
-    let builder = ureq::builder().try_proxy_from_env(true);
-    if let Some(ca_bundle) = tls_ca_bundle() {
-        let mut reader = io::BufReader::new(File::open(ca_bundle)?);
-        let certs = rustls_pemfile::certs(&mut reader).collect::<Result<Vec<_>, _>>()?;
-        let mut root_certs = rustls::RootCertStore::empty();
-        root_certs.add_parsable_certificates(certs);
-        let client_config = rustls::ClientConfig::builder()
-            .with_root_certificates(root_certs)
-            .with_no_client_auth();
-        Ok(builder.tls_config(Arc::new(client_config)).build())
-    } else {
-        Ok(builder.build())
+    #[cfg(all(not(feature = "native-tls"), feature = "rustls-tls"))]
+    {
+        let builder = ureq::config::Config::builder();
+        let agent = builder
+            .tls_config(
+                ureq::tls::TlsConfig::builder()
+                    .provider(ureq::tls::TlsProvider::Rustls)
+                    .root_certs(ureq::tls::RootCerts::PlatformVerifier)
+                    .build(),
+            )
+            .build()
+            .new_agent();
+        Ok(agent)
     }
-}
-
-#[cfg(not(any(feature = "native-tls", feature = "rustls")))]
-pub fn http_agent() -> Result<ureq::Agent> {
-    let builder = ureq::builder().try_proxy_from_env(true);
-    Ok(builder.build())
+    #[cfg(not(any(feature = "native-tls", feature = "rustls-tls")))]
+    {
+        let agent = ureq::agent();
+        return Ok(agent);
+    }
 }

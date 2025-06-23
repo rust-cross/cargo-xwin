@@ -158,13 +158,14 @@ impl Clang {
                 "https://api.github.com/repos/{}/releases/latest",
                 MSVC_SYSROOT_REPOSITORY
             ))
-            .set("X-GitHub-Api-Version", "2022-11-28");
+            .header("X-GitHub-Api-Version", "2022-11-28");
         if let Ok(token) = env::var("GITHUB_TOKEN") {
-            request = request.set("Authorization", &format!("Bearer {token}"));
+            request = request.header("Authorization", &format!("Bearer {token}"));
         }
-        let response = request.call().context("Failed to get GitHub release")?;
+        let mut response = request.call().context("Failed to get GitHub release")?;
         let release: GitHubRelease = response
-            .into_json()
+            .body_mut()
+            .read_json()
             .context("Failed to deserialize GitHub release")?;
         let asset = release
             .assets
@@ -186,9 +187,11 @@ impl Clang {
         use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
         use xz2::read::XzDecoder;
 
-        let response = agent.get(download_url).call()?;
+        let mut response = agent.get(download_url).call()?;
         let len = response
-            .header("content-length")
+            .headers()
+            .get("content-length")
+            .and_then(|s| s.to_str().ok())
             .and_then(|s| s.parse::<u64>().ok())
             .unwrap_or(0);
         let pb = ProgressBar::new(len);
@@ -206,7 +209,7 @@ impl Clang {
             eprintln!("📥 Downloading MSVC sysroot...");
         }
         let start_time = Instant::now();
-        let reader = pb.wrap_read(response.into_reader());
+        let reader = pb.wrap_read(response.body_mut().as_reader());
         let tar = XzDecoder::new(reader);
         let mut archive = tar::Archive::new(tar);
         archive.unpack(cache_dir)?;
