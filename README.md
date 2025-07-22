@@ -51,6 +51,14 @@ docker run --rm -it -v $(pwd):/io -w /io messense/cargo-xwin \
 With wine installed, you can run tests with the `cargo xwin test` command,
 for example, `cargo xwin test --target x86_64-pc-windows-msvc`
 
+### Running Windows executables in WSL (without wine)
+
+If you want to run Windows executables directly in WSL (without using wine), you can set the runner environment variable as follows:
+
+```bash
+CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUNNER="/usr/bin/env" cargo xwin run --target x86_64-pc-windows-msvc
+```
+
 ### Customization
 
 The Microsoft CRT and Windows SDK can be customized using the following environment variables or CLI options.
