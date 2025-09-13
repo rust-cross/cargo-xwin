@@ -42,7 +42,7 @@ jobs:
       - name: Install dependencies
         if: startsWith(matrix.os, 'macos')
         run: |
-          brew install gnu-tar llvm
+          brew install gnu-tar llvm cmake
           echo "/usr/local/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
       - name: Install dependencies
         if: startsWith(matrix.os, 'ubuntu')
