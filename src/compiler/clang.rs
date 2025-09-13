@@ -153,7 +153,7 @@ impl Clang {
         let download_url = self
             .get_latest_msvc_sysroot_download_url(agent.clone())
             .unwrap_or_else(|_| FALLBACK_DOWNLOAD_URL.to_string());
-        self.download_msvc_sysroot(&cache_dir, agent, &download_url)
+        self.download_msvc_sysroot(&msvc_sysroot_dir, agent, &download_url)
             .context("Failed to unpack msvc sysroot")?;
         fs::write(done_mark_file, download_url)?;
         Ok(msvc_sysroot_dir)
