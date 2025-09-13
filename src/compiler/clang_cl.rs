@@ -76,7 +76,7 @@ impl<'a> ClangCl<'a> {
 
                 let xwin_dir = adjust_canonicalization(xwin_cache_dir.to_slash_lossy().to_string());
                 let cl_flags = format!(
-                    "--target={target} -Wno-unused-command-line-argument -fuse-ld=lld-link -isystem {dir}/crt/include -isystem {dir}/sdk/include/ucrt -isystem {dir}/sdk/include/um -isystem {dir}/sdk/include/shared {user_set_cl_flags}",
+                    "--target={target} -Wno-unused-command-line-argument -fuse-ld=lld-link -I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared {user_set_cl_flags}",
                     dir = xwin_dir,
                 );
                 cmd.env("CL_FLAGS", &cl_flags);
@@ -396,14 +396,10 @@ set(COMPILE_FLAGS
     -Wno-unused-command-line-argument
     -fuse-ld=lld-link
 
-    -isystem
-    {xwin_dir}/crt/include
-    -isystem
-    {xwin_dir}/sdk/include/ucrt
-    -isystem
-    {xwin_dir}/sdk/include/um
-    -isystem
-    {xwin_dir}/sdk/include/shared)
+    -I{xwin_dir}/crt/include
+    -I{xwin_dir}/sdk/include/ucrt
+    -I{xwin_dir}/sdk/include/um
+    -I{xwin_dir}/sdk/include/shared)
 
 set(LINK_FLAGS
     /manifest:no
