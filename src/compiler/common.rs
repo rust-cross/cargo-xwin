@@ -178,6 +178,31 @@ pub fn get_rustflags(workdir: &Path, target: &str) -> Result<Option<cargo_config
     Ok(rustflags)
 }
 
+/// Checks if the target features include `+crt-static` for static CRT linkage.
+///
+/// This function examines RUSTFLAGS from various sources to determine if the
+/// `+crt-static` target feature is enabled, which affects how we link against
+/// the MSVC C runtime library.
+pub fn is_static_crt_enabled(workdir: &Path, target: &str) -> Result<bool> {
+    // Check RUSTFLAGS environment variable first
+    if let Ok(rustflags) = env::var("RUSTFLAGS") {
+        if rustflags.contains("+crt-static") {
+            return Ok(true);
+        }
+    }
+    
+    // Check cargo configuration
+    if let Some(flags) = get_rustflags(workdir, target)? {
+        for flag in &flags.flags {
+            if flag.contains("+crt-static") {
+                return Ok(true);
+            }
+        }
+    }
+    
+    Ok(false)
+}
+
 pub fn http_agent() -> Result<ureq::Agent> {
     #[cfg(feature = "native-tls")]
     {
@@ -211,5 +236,49 @@ pub fn http_agent() -> Result<ureq::Agent> {
     {
         let agent = ureq::agent();
         return Ok(agent);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn test_is_static_crt_enabled_env_var() {
+        // Test with RUSTFLAGS environment variable containing +crt-static
+        unsafe {
+            env::set_var("RUSTFLAGS", "-C target-feature=+crt-static");
+        }
+        
+        let result = is_static_crt_enabled(Path::new("."), "x86_64-pc-windows-msvc");
+        assert!(result.is_ok());
+        assert!(result.unwrap());
+        
+        // Test with RUSTFLAGS not containing +crt-static
+        unsafe {
+            env::set_var("RUSTFLAGS", "-C opt-level=3");
+        }
+        
+        let result = is_static_crt_enabled(Path::new("."), "x86_64-pc-windows-msvc");
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
+        
+        // Clean up
+        unsafe {
+            env::remove_var("RUSTFLAGS");
+        }
+    }
+
+    #[test]
+    fn test_is_static_crt_enabled_no_flags() {
+        // Test with no RUSTFLAGS
+        unsafe {
+            env::remove_var("RUSTFLAGS");
+        }
+        
+        let result = is_static_crt_enabled(Path::new("."), "x86_64-pc-windows-msvc");
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
     }
 }
