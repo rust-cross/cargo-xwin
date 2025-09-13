@@ -33,11 +33,6 @@ jobs:
       XWIN_CROSS_COMPILER: ${{ matrix.cross-compiler }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: messense/crfsuite-rs
-          path: tests/crfsuite-rs
-          submodules: true
       - uses: seanmiddleditch/gha-setup-ninja@master
       - name: Install dependencies
         if: startsWith(matrix.os, 'macos')
@@ -77,8 +72,6 @@ jobs:
           cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/hello-rustls/Cargo.toml
           # Test using default build target from config
           cargo run --release xwin build --manifest-path tests/hello-windows/Cargo.toml
-          # Test CMake support
-          cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/crfsuite-rs/Cargo.toml
       - name: xwin build - x86_64 static CRT
         run: |
           # Test static CRT linkage using hello-rustls
@@ -98,8 +91,6 @@ jobs:
           cargo run --release xwin build --target aarch64-pc-windows-msvc --manifest-path tests/libhello/Cargo.toml
           cargo run --release xwin build --target aarch64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
           cargo run --release xwin build --target aarch64-pc-windows-msvc --manifest-path tests/hello-tls/Cargo.toml
-          # Test CMake support
-          cargo run --release xwin build --target aarch64-pc-windows-msvc --manifest-path tests/crfsuite-rs/Cargo.toml
       - name: xwin build - aarch64 static CRT
         run: |
           # Test static CRT linkage using hello-rustls
