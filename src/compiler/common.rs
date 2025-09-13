@@ -190,7 +190,7 @@ pub fn is_static_crt_enabled(workdir: &Path, target: &str) -> Result<bool> {
             return Ok(true);
         }
     }
-    
+
     // Check cargo configuration
     if let Some(flags) = get_rustflags(workdir, target)? {
         for flag in &flags.flags {
@@ -199,7 +199,7 @@ pub fn is_static_crt_enabled(workdir: &Path, target: &str) -> Result<bool> {
             }
         }
     }
-    
+
     Ok(false)
 }
 
@@ -250,20 +250,20 @@ mod tests {
         unsafe {
             env::set_var("RUSTFLAGS", "-C target-feature=+crt-static");
         }
-        
+
         let result = is_static_crt_enabled(Path::new("."), "x86_64-pc-windows-msvc");
         assert!(result.is_ok());
         assert!(result.unwrap());
-        
+
         // Test with RUSTFLAGS not containing +crt-static
         unsafe {
             env::set_var("RUSTFLAGS", "-C opt-level=3");
         }
-        
+
         let result = is_static_crt_enabled(Path::new("."), "x86_64-pc-windows-msvc");
         assert!(result.is_ok());
         assert!(!result.unwrap());
-        
+
         // Clean up
         unsafe {
             env::remove_var("RUSTFLAGS");
@@ -276,31 +276,31 @@ mod tests {
         unsafe {
             env::remove_var("RUSTFLAGS");
         }
-        
+
         let result = is_static_crt_enabled(Path::new("."), "x86_64-pc-windows-msvc");
         assert!(result.is_ok());
         assert!(!result.unwrap());
     }
-    
-    #[test]  
+
+    #[test]
     fn test_is_static_crt_enabled_config_file() {
         // Test with a temporary config file containing +crt-static
         let test_dir = std::env::temp_dir().join("test_cargo_config");
         std::fs::create_dir_all(&test_dir).unwrap();
         std::fs::create_dir_all(test_dir.join(".cargo")).unwrap();
-        
+
         let config_content = r#"[target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]"#;
         std::fs::write(test_dir.join(".cargo/config.toml"), config_content).unwrap();
-        
+
         unsafe {
             env::remove_var("RUSTFLAGS");
         }
-        
+
         let result = is_static_crt_enabled(&test_dir, "x86_64-pc-windows-msvc");
         assert!(result.is_ok());
         assert!(result.unwrap());
-        
+
         // Clean up
         std::fs::remove_dir_all(&test_dir).unwrap();
     }

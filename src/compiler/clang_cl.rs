@@ -118,12 +118,12 @@ impl<'a> ClangCl<'a> {
                 rustflags
                     .flags
                     .extend(["-C".to_string(), "linker-flavor=lld-link".to_string()]);
-                
+
                 // Check if static CRT is enabled
                 let is_static_crt = is_static_crt_enabled(&workdir, target)?;
                 if is_static_crt {
                     // When using static CRT, we need to link against the static version of libucrt
-                    // instead of the import library. This resolves issues with symbols like 
+                    // instead of the import library. This resolves issues with symbols like
                     // __stdio_common_vsscanf being marked as dllimport.
                     rustflags.flags.extend([
                         "-C".to_string(),
@@ -132,7 +132,7 @@ impl<'a> ClangCl<'a> {
                         "link-arg=-defaultlib:libucrt".to_string(),
                     ]);
                 }
-                
+
                 rustflags.push(format!(
                     "-Lnative={dir}/crt/lib/{arch}",
                     dir = xwin_dir,
