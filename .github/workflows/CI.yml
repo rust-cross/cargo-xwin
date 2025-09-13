@@ -82,7 +82,7 @@ jobs:
       - name: xwin build - x86_64 static CRT
         run: |
           # Test static CRT linkage using hello-rustls
-          RUSTFLAGS='-C target-feature=+crt-static' cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/hello-rustls/Cargo.toml
+          RUSTFLAGS='-C target-feature=+crt-static' target/release/cargo-xwin build --target x86_64-pc-windows-msvc --manifest-path tests/hello-rustls/Cargo.toml
       - name: xwin run - x86_64
         if: startsWith(matrix.os, 'ubuntu')
         run: |
@@ -103,7 +103,7 @@ jobs:
       - name: xwin build - aarch64 static CRT
         run: |
           # Test static CRT linkage using hello-rustls
-          RUSTFLAGS='-C target-feature=+crt-static' cargo run --release xwin build --target aarch64-pc-windows-msvc --manifest-path tests/hello-rustls/Cargo.toml
+          RUSTFLAGS='-C target-feature=+crt-static' target/release/cargo-xwin build --target aarch64-pc-windows-msvc --manifest-path tests/hello-rustls/Cargo.toml
 
   msrv:
     name: MSRV
