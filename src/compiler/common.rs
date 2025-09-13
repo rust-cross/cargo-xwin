@@ -281,4 +281,27 @@ mod tests {
         assert!(result.is_ok());
         assert!(!result.unwrap());
     }
+    
+    #[test]  
+    fn test_is_static_crt_enabled_config_file() {
+        // Test with a temporary config file containing +crt-static
+        let test_dir = std::env::temp_dir().join("test_cargo_config");
+        std::fs::create_dir_all(&test_dir).unwrap();
+        std::fs::create_dir_all(test_dir.join(".cargo")).unwrap();
+        
+        let config_content = r#"[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]"#;
+        std::fs::write(test_dir.join(".cargo/config.toml"), config_content).unwrap();
+        
+        unsafe {
+            env::remove_var("RUSTFLAGS");
+        }
+        
+        let result = is_static_crt_enabled(&test_dir, "x86_64-pc-windows-msvc");
+        assert!(result.is_ok());
+        assert!(result.unwrap());
+        
+        // Clean up
+        std::fs::remove_dir_all(&test_dir).unwrap();
+    }
 }
