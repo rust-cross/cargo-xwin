@@ -15,7 +15,8 @@ use xwin::util::ProgressTarget;
 
 use crate::compiler::common::{
     adjust_canonicalization, default_build_target_from_config, get_rustflags, http_agent,
-    setup_cmake_env, setup_env_path, setup_llvm_tools, setup_target_compiler_and_linker_env,
+    is_static_crt_enabled, setup_cmake_env, setup_env_path, setup_llvm_tools,
+    setup_target_compiler_and_linker_env,
 };
 use crate::options::XWinOptions;
 
@@ -75,7 +76,7 @@ impl<'a> ClangCl<'a> {
 
                 let xwin_dir = adjust_canonicalization(xwin_cache_dir.to_slash_lossy().to_string());
                 let cl_flags = format!(
-                    "--target={target} -Wno-unused-command-line-argument -fuse-ld=lld-link /imsvc{dir}/crt/include /imsvc{dir}/sdk/include/ucrt /imsvc{dir}/sdk/include/um /imsvc{dir}/sdk/include/shared {user_set_cl_flags}",
+                    "--target={target} -Wno-unused-command-line-argument -fuse-ld=lld-link -I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared {user_set_cl_flags}",
                     dir = xwin_dir,
                 );
                 cmd.env("CL_FLAGS", &cl_flags);
@@ -117,6 +118,21 @@ impl<'a> ClangCl<'a> {
                 rustflags
                     .flags
                     .extend(["-C".to_string(), "linker-flavor=lld-link".to_string()]);
+
+                // Check if static CRT is enabled
+                let is_static_crt = is_static_crt_enabled(&workdir, target)?;
+                if is_static_crt {
+                    // When using static CRT, we need to link against the static version of libucrt
+                    // instead of the import library. This resolves issues with symbols like
+                    // __stdio_common_vsscanf being marked as dllimport.
+                    rustflags.flags.extend([
+                        "-C".to_string(),
+                        "link-arg=-nodefaultlib:ucrt".to_string(),
+                        "-C".to_string(),
+                        "link-arg=-defaultlib:libucrt".to_string(),
+                    ]);
+                }
+
                 rustflags.push(format!(
                     "-Lnative={dir}/crt/lib/{arch}",
                     dir = xwin_dir,
@@ -380,10 +396,10 @@ set(COMPILE_FLAGS
     -Wno-unused-command-line-argument
     -fuse-ld=lld-link
 
-    /imsvc{xwin_dir}/crt/include
-    /imsvc{xwin_dir}/sdk/include/ucrt
-    /imsvc{xwin_dir}/sdk/include/um
-    /imsvc{xwin_dir}/sdk/include/shared)
+    -I{xwin_dir}/crt/include
+    -I{xwin_dir}/sdk/include/ucrt
+    -I{xwin_dir}/sdk/include/um
+    -I{xwin_dir}/sdk/include/shared)
 
 set(LINK_FLAGS
     /manifest:no
