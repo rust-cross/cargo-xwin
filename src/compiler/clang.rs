@@ -66,7 +66,7 @@ impl Clang {
                 let sysroot_dir =
                     adjust_canonicalization(msvc_sysroot_dir.to_slash_lossy().to_string());
                 let clang_flags = format!(
-                    "--target={target_no_vendor} -fuse-ld=lld-link -I{dir}/include -I{dir}/include/c++/stl -I{dir}/include/__msvc_vcruntime_intrinsics -L{dir}/lib/{target_unknown_vendor}",
+                    "--target={target_no_vendor} -fuse-ld=lld-link -I{dir}/include -I{dir}/include/c++/stl -L{dir}/lib/{target_unknown_vendor}",
                     dir = sysroot_dir,
                 );
                 cmd.env(
@@ -79,11 +79,11 @@ impl Clang {
                 );
                 cmd.env(
                     format!("BINDGEN_EXTRA_CLANG_ARGS_{env_target}"),
-                    format!("-I{dir}/include -I{dir}/include/c++/stl -I{dir}/include/__msvc_vcruntime_intrinsics", dir = sysroot_dir),
+                    format!("-I{dir}/include -I{dir}/include/c++/stl", dir = sysroot_dir),
                 );
                 cmd.env(
                     "RCFLAGS",
-                    format!("-I{dir}/include -I{dir}/include/c++/stl -I{dir}/include/__msvc_vcruntime_intrinsics", dir = sysroot_dir),
+                    format!("-I{dir}/include -I{dir}/include/c++/stl", dir = sysroot_dir),
                 );
 
                 let mut rustflags = get_rustflags(&workdir, target)?.unwrap_or_default();
@@ -140,6 +140,11 @@ impl Clang {
         if msvc_sysroot_dir.is_dir() {
             if done_mark_file.is_file() {
                 // Already downloaded and unpacked
+                // The actual sysroot is in the nested windows-msvc-sysroot directory
+                let nested_sysroot_dir = msvc_sysroot_dir.join("windows-msvc-sysroot");
+                if nested_sysroot_dir.is_dir() {
+                    return Ok(nested_sysroot_dir);
+                }
                 return Ok(msvc_sysroot_dir);
             } else {
                 // Download again
@@ -156,7 +161,14 @@ impl Clang {
         self.download_msvc_sysroot(&msvc_sysroot_dir, agent, &download_url)
             .context("Failed to unpack msvc sysroot")?;
         fs::write(done_mark_file, download_url)?;
-        Ok(msvc_sysroot_dir)
+        
+        // The actual sysroot is in the nested windows-msvc-sysroot directory
+        let nested_sysroot_dir = msvc_sysroot_dir.join("windows-msvc-sysroot");
+        if nested_sysroot_dir.is_dir() {
+            Ok(nested_sysroot_dir)
+        } else {
+            Ok(msvc_sysroot_dir)
+        }
     }
 
     /// Retrieves the latest MSVC sysroot download URL from GitHub Releases.
