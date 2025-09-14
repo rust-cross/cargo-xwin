@@ -1,3 +1,5 @@
+extern crate bzip2_sys;
+
 #[tokio::main]
 async fn main() {
     let response = reqwest::Client::new()
