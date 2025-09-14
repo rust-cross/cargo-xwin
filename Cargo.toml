@@ -27,7 +27,7 @@ clap = { version = "4.3.0", features = [
 dirs = "6.0.0"
 fs-err = "3.0.0"
 humantime = "2.1.0"
-indicatif = "0.17.2"
+indicatif = "0.17.11"
 paste = "1.0.12"
 path-slash = "0.2.0"
 serde = { version = "1.0.216", features = ["derive"] }
