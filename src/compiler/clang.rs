@@ -17,7 +17,7 @@ use crate::compiler::common::{
 const MSVC_SYSROOT_DIR: &str = "windows-msvc-sysroot";
 const MSVC_SYSROOT_REPOSITORY: &str = "trcrsired/windows-msvc-sysroot";
 const MSVC_SYSROOT_ASSET_NAME: &str = "windows-msvc-sysroot.tar.xz";
-const FALLBACK_DOWNLOAD_URL: &str = "https://github.com/trcrsired/windows-msvc-sysroot/releases/download/2025-01-22/windows-msvc-sysroot.tar.xz";
+const FALLBACK_DOWNLOAD_URL: &str = "https://github.com/trcrsired/windows-msvc-sysroot/releases/download/2025-09-12/windows-msvc-sysroot.tar.xz";
 
 #[derive(Debug)]
 pub struct Clang;
@@ -206,7 +206,7 @@ impl Clang {
 
     fn download_msvc_sysroot_once(
         &self,
-        cache_dir: &Path,
+        msvc_sysroot_dir: &Path,
         agent: &ureq::Agent,
         download_url: &str,
     ) -> Result<()> {
@@ -238,7 +238,7 @@ impl Clang {
         let reader = pb.wrap_read(response.body_mut().as_reader());
         let tar = XzDecoder::new(reader);
         let mut archive = tar::Archive::new(tar);
-        archive.unpack(cache_dir)?;
+        archive.unpack(msvc_sysroot_dir)?;
         pb.finish_with_message("Download completed");
         if pb.is_hidden() {
             // Display elapsed time in human-readable format to seconds only
@@ -251,7 +251,7 @@ impl Clang {
 
     fn download_msvc_sysroot(
         &self,
-        cache_dir: &Path,
+        msvc_sysroot_dir: &Path,
         agent: ureq::Agent,
         download_url: &str,
     ) -> Result<()> {
@@ -272,7 +272,7 @@ impl Clang {
                 );
             }
 
-            match self.download_msvc_sysroot_once(cache_dir, &agent, download_url) {
+            match self.download_msvc_sysroot_once(msvc_sysroot_dir, &agent, download_url) {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = Some(e);
