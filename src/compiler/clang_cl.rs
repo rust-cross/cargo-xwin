@@ -74,11 +74,40 @@ impl<'a> ClangCl<'a> {
                 let user_set_c_flags = env::var("CFLAGS").unwrap_or_default();
                 let user_set_cxx_flags = env::var("CXXFLAGS").unwrap_or_default();
 
+                let target_arch = target
+                    .split_once('-')
+                    .map(|(x, _)| x)
+                    .context("invalid target triple")?;
+                let xwin_arch = match target_arch {
+                    "i586" | "i686" => "x86",
+                    _ => target_arch,
+                };
+
                 let xwin_dir = adjust_canonicalization(xwin_cache_dir.to_slash_lossy().to_string());
-                let cl_flags = format!(
-                    "--target={target} -Wno-unused-command-line-argument -fuse-ld=lld-link -I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared {user_set_cl_flags}",
-                    dir = xwin_dir,
-                );
+                let mut cl_flags = vec![
+                    format!("--target={target}"),
+                    "-Wno-unused-command-line-argument".to_string(),
+                    "-fuse-ld=lld-link".to_string(),
+                    format!("-I{dir}/crt/include", dir = xwin_dir),
+                    format!("-I{dir}/sdk/include/ucrt", dir = xwin_dir),
+                    format!("-I{dir}/sdk/include/um", dir = xwin_dir),
+                    format!("-I{dir}/sdk/include/shared", dir = xwin_dir),
+                    format!("-L{dir}/crt/lib/{arch}", dir = xwin_dir, arch = xwin_arch),
+                    format!(
+                        "-L{dir}/sdk/lib/um/{arch}",
+                        dir = xwin_dir,
+                        arch = xwin_arch
+                    ),
+                    format!(
+                        "-L{dir}/sdk/lib/ucrt/{arch}",
+                        dir = xwin_dir,
+                        arch = xwin_arch
+                    ),
+                ];
+                if !user_set_cl_flags.is_empty() {
+                    cl_flags.push(user_set_cl_flags.clone());
+                }
+                let cl_flags = cl_flags.join(" ");
                 cmd.env("CL_FLAGS", &cl_flags);
                 cmd.env(
                     format!("CFLAGS_{env_target}"),
@@ -104,15 +133,6 @@ impl<'a> ClangCl<'a> {
                         dir = xwin_dir
                     )
                 );
-
-                let target_arch = target
-                    .split_once('-')
-                    .map(|(x, _)| x)
-                    .context("invalid target triple")?;
-                let xwin_arch = match target_arch {
-                    "i586" | "i686" => "x86",
-                    _ => target_arch,
-                };
 
                 let mut rustflags = get_rustflags(&workdir, target)?.unwrap_or_default();
                 rustflags
