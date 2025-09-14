@@ -16,7 +16,7 @@ use crate::compiler::common::{
 
 const MSVC_SYSROOT_REPOSITORY: &str = "trcrsired/windows-msvc-sysroot";
 const MSVC_SYSROOT_ASSET_NAME: &str = "windows-msvc-sysroot.tar.xz";
-const FALLBACK_DOWNLOAD_URL: &str = "https://github.com/trcrsired/windows-msvc-sysroot/releases/download/2025-01-22/windows-msvc-sysroot.tar.xz";
+const FALLBACK_DOWNLOAD_URL: &str = "https://github.com/trcrsired/windows-msvc-sysroot/releases/download/2025-09-12/windows-msvc-sysroot.tar.xz";
 
 #[derive(Debug)]
 pub struct Clang;
