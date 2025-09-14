@@ -1,4 +1,4 @@
-ARG RUST_VESION=stable
+ARG RUST_VERSION=stable
 
 FROM rust:$RUST_VERSION as builder
 
