@@ -6,5 +6,9 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-reqwest = { version = "0.12.9", default-features = false, features = ["rustls-tls"] }
+# Used to test bzip2 build
+async-compression = { version = "0.4.30", features = ["bzip2"] }
+bzip2 = { version = "0.6.0", default-features = false, features = ["static"] }
+
+reqwest = { version = "0.12.9", default-features = false, features = ["rustls-tls", "gzip"] }
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
