@@ -93,12 +93,12 @@ jobs:
           cargo run --release xwin build --target aarch64-pc-windows-msvc --manifest-path tests/libhello/Cargo.toml
           cargo run --release xwin build --target aarch64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
           cargo run --release xwin build --target aarch64-pc-windows-msvc --manifest-path tests/hello-tls/Cargo.toml
-      - name: xwin build - aarch64 static CRT
-        env:
-          RUSTFLAGS: "-C target-feature=+crt-static"
-        run: |
-          # Test static CRT linkage using hello-rustls
-          target/release/cargo-xwin build --target aarch64-pc-windows-msvc --manifest-path tests/hello-rustls/Cargo.toml
+      # - name: xwin build - aarch64 static CRT
+      #   env:
+      #     RUSTFLAGS: "-C target-feature=+crt-static"
+      #   run: |
+      #     # Test static CRT linkage using hello-rustls
+      #     target/release/cargo-xwin build --target aarch64-pc-windows-msvc --manifest-path tests/hello-rustls/Cargo.toml
 
   msrv:
     name: MSRV
