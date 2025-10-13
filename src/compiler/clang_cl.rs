@@ -88,21 +88,10 @@ impl<'a> ClangCl<'a> {
                     format!("--target={target}"),
                     "-Wno-unused-command-line-argument".to_string(),
                     "-fuse-ld=lld-link".to_string(),
-                    format!("-I{dir}/crt/include", dir = xwin_dir),
-                    format!("-I{dir}/sdk/include/ucrt", dir = xwin_dir),
-                    format!("-I{dir}/sdk/include/um", dir = xwin_dir),
-                    format!("-I{dir}/sdk/include/shared", dir = xwin_dir),
-                    format!("-L{dir}/crt/lib/{arch}", dir = xwin_dir, arch = xwin_arch),
-                    format!(
-                        "-L{dir}/sdk/lib/um/{arch}",
-                        dir = xwin_dir,
-                        arch = xwin_arch
-                    ),
-                    format!(
-                        "-L{dir}/sdk/lib/ucrt/{arch}",
-                        dir = xwin_dir,
-                        arch = xwin_arch
-                    ),
+                    format!("/imsvc {dir}/crt/include", dir = xwin_dir),
+                    format!("/imsvc {dir}/sdk/include/ucrt", dir = xwin_dir),
+                    format!("/imsvc {dir}/sdk/include/um", dir = xwin_dir),
+                    format!("/imsvc {dir}/sdk/include/shared", dir = xwin_dir),
                 ];
                 if !user_set_cl_flags.is_empty() {
                     cl_flags.push(user_set_cl_flags.clone());
@@ -133,6 +122,24 @@ impl<'a> ClangCl<'a> {
                         dir = xwin_dir
                     )
                 );
+
+                // Set LIB environment variable for clang-cl library path resolution
+                let lib_paths = vec![
+                    format!("{dir}/crt/lib/{arch}", dir = xwin_dir, arch = xwin_arch),
+                    format!("{dir}/sdk/lib/um/{arch}", dir = xwin_dir, arch = xwin_arch),
+                    format!(
+                        "{dir}/sdk/lib/ucrt/{arch}",
+                        dir = xwin_dir,
+                        arch = xwin_arch
+                    ),
+                ];
+                let existing_lib = env::var("LIB").unwrap_or_default();
+                let lib_value = if existing_lib.is_empty() {
+                    lib_paths.join(";")
+                } else {
+                    format!("{};{}", lib_paths.join(";"), existing_lib)
+                };
+                cmd.env("LIB", lib_value);
 
                 let mut rustflags = get_rustflags(&workdir, target)?.unwrap_or_default();
                 rustflags
@@ -416,10 +423,10 @@ set(COMPILE_FLAGS
     -Wno-unused-command-line-argument
     -fuse-ld=lld-link
 
-    -I{xwin_dir}/crt/include
-    -I{xwin_dir}/sdk/include/ucrt
-    -I{xwin_dir}/sdk/include/um
-    -I{xwin_dir}/sdk/include/shared)
+    /imsvc {xwin_dir}/crt/include
+    /imsvc {xwin_dir}/sdk/include/ucrt
+    /imsvc {xwin_dir}/sdk/include/um
+    /imsvc {xwin_dir}/sdk/include/shared)
 
 set(LINK_FLAGS
     /manifest:no
