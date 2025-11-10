@@ -118,7 +118,7 @@ impl Clang {
 
                 // CMake support
                 let cmake_toolchain = self
-                    .setup_cmake_toolchain(target, &sysroot_dir, &cache_dir)
+                    .setup_cmake_toolchain(target, &sysroot_dir, &cache_dir, is_static_crt)
                     .with_context(|| format!("Failed to setup CMake toolchain for {}", target))?;
                 setup_cmake_env(cmd, target, cmake_toolchain);
             }
@@ -289,6 +289,7 @@ impl Clang {
         target: &str,
         sysroot_dir: &str,
         cache_dir: &Path,
+        is_static_crt: bool,
     ) -> Result<PathBuf> {
         // x86_64-pc-windows-msvc -> x86_64-windows-msvc
         let target_no_vendor = target.replace("-pc-", "-");
@@ -309,6 +310,15 @@ impl Clang {
             _ => target_arch,
         };
 
+        // Due to https://github.com/rust-lang/rust/issues/39016
+        // rust always links against non-debug Windows runtime
+        // so we must set the runtime library to MultiThreadedDLL or MultiThreaded
+        let runtime_library = if is_static_crt {
+            "MultiThreaded"
+        } else {
+            "MultiThreadedDLL"
+        };
+
         let content = format!(
             r#"
 set(CMAKE_SYSTEM_NAME Windows)
@@ -320,6 +330,7 @@ set(CMAKE_LINKER lld-link CACHE FILEPATH "")
 set(CMAKE_RC_COMPILER llvm-rc CACHE FILEPATH "")
 set(CMAKE_C_COMPILER_TARGET {target} CACHE STRING "")
 set(CMAKE_CXX_COMPILER_TARGET {target} CACHE STRING "")
+set(CMAKE_MSVC_RUNTIME_LIBRARY CACHE STRING "{runtime_library}")
 
 set(COMPILE_FLAGS
     --target={target_no_vendor}
