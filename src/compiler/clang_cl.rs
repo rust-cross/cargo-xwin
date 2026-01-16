@@ -92,6 +92,7 @@ impl<'a> ClangCl<'a> {
                     format!("/imsvc {dir}/sdk/include/ucrt", dir = xwin_dir),
                     format!("/imsvc {dir}/sdk/include/um", dir = xwin_dir),
                     format!("/imsvc {dir}/sdk/include/shared", dir = xwin_dir),
+                    format!("/imsvc {dir}/sdk/include/winrt", dir = xwin_dir),
                 ];
                 if !user_set_cl_flags.is_empty() {
                     cl_flags.push(user_set_cl_flags.clone());
@@ -110,7 +111,7 @@ impl<'a> ClangCl<'a> {
                 cmd.env(
                     format!("BINDGEN_EXTRA_CLANG_ARGS_{env_target}"),
                     format!(
-                        "-I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared",
+                        "-I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared -I{dir}/sdk/include/winrt",
                         dir = xwin_dir
                     )
                 );
@@ -118,7 +119,7 @@ impl<'a> ClangCl<'a> {
                 cmd.env(
                     "RCFLAGS",
                     format!(
-                        "-I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared",
+                        "-I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared -I{dir}/sdk/include/winrt",
                         dir = xwin_dir
                     )
                 );
@@ -441,7 +442,8 @@ set(COMPILE_FLAGS
     /imsvc {xwin_dir}/crt/include
     /imsvc {xwin_dir}/sdk/include/ucrt
     /imsvc {xwin_dir}/sdk/include/um
-    /imsvc {xwin_dir}/sdk/include/shared)
+    /imsvc {xwin_dir}/sdk/include/shared
+    /imsvc {xwin_dir}/sdk/include/winrt)
 
 set(LINK_FLAGS
     /manifest:no
