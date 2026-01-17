@@ -21,7 +21,7 @@ FROM rust:$RUST_VERSION
 
 RUN set -eux; \
     curl --fail https://dl.winehq.org/wine-builds/winehq.key | gpg --dearmor > /usr/share/keyrings/winehq.gpg; \
-    echo "deb [signed-by=/usr/share/keyrings/winehq.gpg] https://dl.winehq.org/wine-builds/debian/ bookworm main" > /etc/apt/sources.list.d/winehq.list; \
+    . /etc/os-release && echo "deb [signed-by=/usr/share/keyrings/winehq.gpg] https://dl.winehq.org/wine-builds/debian/ $VERSION_CODENAME main" > /etc/apt/sources.list.d/winehq.list; \
     # The way the debian package works requires that we add x86 support, even
     # though we are only going be running x86_64 executables. We could also
     # build from source, but that is out of scope.
