@@ -61,7 +61,7 @@ impl<'a> ClangCl<'a> {
 
         for target in &targets {
             if target.contains("msvc") {
-                self.setup_msvc_crt(xwin_cache_dir.clone())
+                self.setup_msvc_crt_with_retry(xwin_cache_dir.clone())
                     .context("Failed to setup MSVC CRT")?;
                 let env_target = target.to_lowercase().replace('-', "_");
 
@@ -187,6 +187,44 @@ impl<'a> ClangCl<'a> {
             }
         }
         Ok(())
+    }
+
+    fn setup_msvc_crt_with_retry(&self, cache_dir: PathBuf) -> Result<()> {
+        let max_retries = self.xwin_options.xwin_http_retries;
+        let mut last_error = None;
+
+        for attempt in 0..=max_retries {
+            if attempt > 0 {
+                let wait_time = Duration::from_secs(2u64.pow(attempt - 1));
+                std::thread::sleep(wait_time);
+                eprintln!(
+                    "Retrying MSVC CRT setup (attempt {}/{})",
+                    attempt + 1,
+                    max_retries + 1
+                );
+                self.cleanup_partial_download(&cache_dir);
+            }
+
+            match self.setup_msvc_crt(cache_dir.clone()) {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    last_error = Some(e);
+                }
+            }
+        }
+
+        Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Failed to setup MSVC CRT")))
+    }
+
+    fn cleanup_partial_download(&self, cache_dir: &Path) {
+        let dl_dir = cache_dir.join("dl");
+        if dl_dir.exists() {
+            let _ = fs::remove_dir_all(&dl_dir);
+        }
+        let unpack_dir = cache_dir.join("unpack");
+        if unpack_dir.exists() {
+            let _ = fs::remove_dir_all(&unpack_dir);
+        }
     }
 
     /// Downloads and extracts the specified MSVC CRT components into the specified `cache_dir`.

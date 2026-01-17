@@ -78,6 +78,10 @@ pub struct XWinOptions {
     /// Whether or not to include debug symbols (PDBs)
     #[arg(long, env = "XWIN_INCLUDE_DEBUG_SYMBOLS", hide = true)]
     pub xwin_include_debug_symbols: bool,
+
+    /// Number of times to retry HTTP requests when downloading
+    #[arg(long, env = "XWIN_HTTP_RETRIES", default_value = "3")]
+    pub xwin_http_retries: u32,
 }
 
 impl Default for XWinOptions {
@@ -93,6 +97,7 @@ impl Default for XWinOptions {
             xwin_include_debug_libs: false,
             xwin_include_debug_symbols: false,
             cross_compiler: CrossCompiler::ClangCl,
+            xwin_http_retries: 3,
         }
     }
 }

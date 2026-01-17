@@ -75,6 +75,7 @@ The Microsoft CRT and Windows SDK can be customized using the following environm
 | `XWIN_CACHE_DIR`             | `--xwin-cache-dir`             | xwin cache directory to put CRT and SDK files                                                                      |
 | `XWIN_INCLUDE_DEBUG_LIBS`    | `--xwin-include-debug-libs`    | Whether or not to include debug libs in installation (default false).                                              |
 | `XWIN_INCLUDE_DEBUG_SYMBOLS` | `--xwin-include-debug-symbols` | Whether or not to include debug symbols (PDBs) in installation (default false).                                    |
+| `XWIN_HTTP_RETRIES`          | `--xwin-http-retries`          | Number of times to retry HTTP requests when downloading (default 3).                                               |
 
 ### CMake Support
 
