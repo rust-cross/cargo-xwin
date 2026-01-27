@@ -166,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-xwin"
-version = "0.21.2"
+version = "0.21.3"
 dependencies = [
  "anyhow",
  "cargo-config2",
