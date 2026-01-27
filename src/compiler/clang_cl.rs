@@ -176,7 +176,15 @@ impl<'a> ClangCl<'a> {
                     dir = xwin_dir,
                     arch = xwin_arch
                 ));
-                cmd.env("CARGO_ENCODED_RUSTFLAGS", rustflags.encode()?);
+                // Remove RUSTFLAGS from environment to prevent cargo-config2 from setting
+                // override_target_rustflags=true, which would cause it to ignore our
+                // CARGO_TARGET_<triple>_RUSTFLAGS. The flags from RUSTFLAGS are already
+                // included in rustflags via cargo-config2's resolution.
+                cmd.env_remove("RUSTFLAGS");
+                cmd.env(
+                    format!("CARGO_TARGET_{}_RUSTFLAGS", env_target.to_uppercase()),
+                    rustflags.encode_space_separated()?,
+                );
                 cmd.env("PATH", &env_path);
 
                 // CMake support
