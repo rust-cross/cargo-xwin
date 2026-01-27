@@ -113,7 +113,18 @@ impl Clang {
                     "-Lnative={dir}/lib/{target_unknown_vendor}",
                     dir = sysroot_dir,
                 ));
-                cmd.env("CARGO_ENCODED_RUSTFLAGS", rustflags.encode()?);
+                // Remove RUSTFLAGS from environment so that the spawned Cargo respects our
+                // CARGO_TARGET_<triple>_RUSTFLAGS. When RUSTFLAGS is present, Cargo prioritizes
+                // it over CARGO_TARGET_<triple>_RUSTFLAGS. The flags from RUSTFLAGS are already
+                // included in `rustflags` via cargo-config2's resolution.
+                cmd.env_remove("RUSTFLAGS");
+
+                // Use `CARGO_TARGET_<TRIPLE>_RUSTFLAGS` to avoid the flags being passed to artifact
+                // dependencies built for other targets.
+                cmd.env(
+                    format!("CARGO_TARGET_{}_RUSTFLAGS", env_target.to_uppercase()),
+                    rustflags.encode_space_separated()?,
+                );
                 cmd.env("PATH", &env_path);
 
                 // CMake support

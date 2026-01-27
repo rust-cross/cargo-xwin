@@ -1,0 +1,8 @@
+[package]
+name = "linux_bin"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# This is a simple binary that will be built as an artifact for linux-gnu target,
+# even when the main crate is being built for windows-msvc.

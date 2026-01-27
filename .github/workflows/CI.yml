@@ -61,6 +61,7 @@ jobs:
             tests/hello-tls/target
             tests/hello-windows/target
             tests/libhello/target
+            tests/bindeps-cross-target/target
           key: test-crates-${{ runner.os }}-${{ steps.rustup.outputs.cachekey }}-${{ hashFiles('tests/*/Cargo.lock') }}
       - run: cargo build --release
       - name: xwin build - x86_64
@@ -86,6 +87,10 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu')
         run: |
           cargo run --release xwin test --target x86_64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
+      - name: xwin build - bindeps cross-target (nightly only)
+        if: startsWith(matrix.os, 'ubuntu') && matrix.toolchain == 'nightly'
+        run: |
+          cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/bindeps-cross-target/Cargo.toml -Z bindeps
       - name: xwin build - aarch64
         run: |
           rustup target add aarch64-pc-windows-msvc

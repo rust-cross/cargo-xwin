@@ -1,0 +1,14 @@
+# This test verifies that cargo-xwin correctly handles artifact dependencies
+# that target a different platform than the main build target.
+# Without the fix, building for windows-msvc would incorrectly apply Windows
+# linker flags to the linux-musl artifact, causing a build failure.
+
+[package]
+name = "bindeps-cross-target"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Artifact dependency targeting linux-gnu while we build for windows-msvc
+[target.'cfg(target_os = "windows")'.dependencies]
+linux_bin = { path = "./linux_bin", artifact = "bin", target = "x86_64-unknown-linux-gnu" }
