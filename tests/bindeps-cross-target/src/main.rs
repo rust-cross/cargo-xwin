@@ -6,8 +6,8 @@ fn main() {
     #[cfg(target_os = "windows")]
     {
         // The tool binary path is provided via environment variable by cargo
-        let tool_path = env!("CARGO_BIN_FILE_TOOL");
-        println!("Tool binary path: {}", tool_path);
+        let bin_path = env!("CARGO_BIN_FILE_LINUX_BIN");
+        println!("Binary path: {}", bin_path);
     }
 
     #[cfg(not(target_os = "windows"))]
