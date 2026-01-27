@@ -176,11 +176,14 @@ impl<'a> ClangCl<'a> {
                     dir = xwin_dir,
                     arch = xwin_arch
                 ));
-                // Remove RUSTFLAGS from environment to prevent cargo-config2 from setting
-                // override_target_rustflags=true, which would cause it to ignore our
-                // CARGO_TARGET_<triple>_RUSTFLAGS. The flags from RUSTFLAGS are already
-                // included in rustflags via cargo-config2's resolution.
+                // Remove RUSTFLAGS from environment so that the spawned Cargo respects our
+                // CARGO_TARGET_<triple>_RUSTFLAGS. When RUSTFLAGS is present, Cargo prioritizes
+                // it over CARGO_TARGET_<triple>_RUSTFLAGS. The flags from RUSTFLAGS are already
+                // included in `rustflags` via cargo-config2's resolution.
                 cmd.env_remove("RUSTFLAGS");
+
+                // Use `CARGO_TARGET_<TRIPLE>_RUSTFLAGS` to avoid the flags being passed to artifact
+                // dependencies built for other targets.
                 cmd.env(
                     format!("CARGO_TARGET_{}_RUSTFLAGS", env_target.to_uppercase()),
                     rustflags.encode_space_separated()?,
