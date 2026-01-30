@@ -13,6 +13,7 @@ use path_slash::PathExt;
 use which::which_in;
 use xwin::util::ProgressTarget;
 
+use crate::cache::prepare_xwin_cache_dir;
 use crate::compiler::common::{
     adjust_canonicalization, default_build_target_from_config, get_rustflags, http_agent,
     is_static_crt_enabled, setup_cmake_env, setup_env_path, setup_llvm_tools,
@@ -39,11 +40,8 @@ impl<'a> ClangCl<'a> {
     ) -> Result<()> {
         let env_path = setup_env_path(&cache_dir)?;
 
-        let xwin_cache_dir = cache_dir.join("xwin");
-        fs::create_dir_all(&xwin_cache_dir).context("Failed to create xwin cache dir")?;
-        let xwin_cache_dir = xwin_cache_dir
-            .canonicalize()
-            .context("Failed to canonicalize xwin cache dir")?;
+        let xwin_cache_dir = prepare_xwin_cache_dir(cache_dir.clone())
+            .context("Failed to prepare xwin cache dir")?;
 
         let workdir = manifest_path
             .and_then(|p| p.parent().map(|x| x.to_path_buf()))
@@ -239,7 +237,7 @@ impl<'a> ClangCl<'a> {
     }
 
     /// Downloads and extracts the specified MSVC CRT components into the specified `cache_dir`.
-    fn setup_msvc_crt(&self, cache_dir: PathBuf) -> Result<()> {
+    pub fn setup_msvc_crt(&self, cache_dir: PathBuf) -> Result<()> {
         let done_mark_file = cache_dir.join("DONE");
         let xwin_arches: HashSet<_> = self
             .xwin_options

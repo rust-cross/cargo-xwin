@@ -2,7 +2,7 @@ use std::env;
 use std::ffi::OsString;
 use std::process::Command;
 
-use cargo_xwin::{Build, Check, Clippy, Doc, Env, Run, Rustc, Test};
+use cargo_xwin::{Build, Cache, Check, Clippy, Doc, Env, Run, Rustc, Test};
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
@@ -12,6 +12,7 @@ use clap::{Parser, Subcommand};
     styles = cargo_options::styles(),
 )]
 pub enum Cli {
+    /// `cargo xwin` subcommand
     #[command(subcommand, name = "xwin")]
     Opt(Opt),
     // flatten opt here so that `cargo-xwin build` also works
@@ -38,6 +39,8 @@ pub enum Opt {
     Test(Test),
     #[command(name = "env")]
     Env(Env),
+    #[command(name = "cache")]
+    Cache(Cache),
 }
 
 fn main() -> anyhow::Result<()> {
@@ -54,6 +57,7 @@ fn main() -> anyhow::Result<()> {
             Opt::Clippy(clippy) => clippy.execute()?,
             Opt::Doc(doc) => doc.execute()?,
             Opt::Env(env) => env.execute()?,
+            Opt::Cache(cache) => cache.execute()?,
         },
         Cli::External(args) => {
             let mut child = Command::new(env::var_os("CARGO").unwrap_or("cargo".into()))

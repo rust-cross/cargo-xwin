@@ -46,6 +46,20 @@ docker run --rm -it -v $(pwd):/io -w /io messense/cargo-xwin \
 1. Install Rust Windows msvc target via rustup, for example, `rustup target add x86_64-pc-windows-msvc`
 2. Run `cargo xwin build`, for example, `cargo xwin build --target x86_64-pc-windows-msvc`
 
+### Pre-caching for offline builds
+
+You can pre-download and cache the MSVC CRT and Windows SDK for offline builds:
+
+```bash
+# Cache Microsoft CRT and Windows SDK (for clang-cl backend)
+cargo xwin cache xwin
+
+# Cache windows-msvc-sysroot (for clang backend)
+cargo xwin cache windows-msvc-sysroot
+```
+
+This is useful for Docker images or CI/CD pipelines where you want to cache dependencies ahead of time.
+
 ### Run tests with wine
 
 With wine installed, you can run tests with the `cargo xwin test` command,

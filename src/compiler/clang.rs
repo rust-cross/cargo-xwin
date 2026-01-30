@@ -17,7 +17,7 @@ use crate::compiler::common::{
 const MSVC_SYSROOT_DIR: &str = "windows-msvc-sysroot";
 const MSVC_SYSROOT_REPOSITORY: &str = "trcrsired/windows-msvc-sysroot";
 const MSVC_SYSROOT_ASSET_NAME: &str = "windows-msvc-sysroot.tar.xz";
-const FALLBACK_DOWNLOAD_URL: &str = "https://github.com/trcrsired/windows-msvc-sysroot/releases/download/2025-01-22/windows-msvc-sysroot.tar.xz";
+const FALLBACK_DOWNLOAD_URL: &str = "https://github.com/trcrsired/windows-msvc-sysroot/releases/download/2026-01-16/windows-msvc-sysroot.tar.xz";
 
 #[derive(Debug)]
 pub struct Clang;
@@ -146,7 +146,7 @@ impl Clang {
     ///
     /// The environment variable `XWIN_MSVC_SYSROOT_DOWNLOAD_URL` can be used
     /// to override the download URL.
-    fn setup_msvc_sysroot(&self, cache_dir: PathBuf) -> Result<PathBuf> {
+    pub fn setup_msvc_sysroot(&self, cache_dir: PathBuf) -> Result<PathBuf> {
         let msvc_sysroot_dir = cache_dir.join(MSVC_SYSROOT_DIR);
         let done_mark_file = msvc_sysroot_dir.join("DONE");
         if msvc_sysroot_dir.is_dir() {
