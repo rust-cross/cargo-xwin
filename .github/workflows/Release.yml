@@ -14,7 +14,7 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin
@@ -67,7 +67,7 @@ jobs:
           - arch: x86
             target: i686-pc-windows-msvc
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
       - uses: dtolnay/rust-toolchain@stable
       - name: Build
@@ -131,7 +131,7 @@ jobs:
       env:
         CFLAGS_armv7_unknown_linux_musleabihf: "-mfpu=vfpv3-d16"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build
         uses: PyO3/maturin-action@main
         with:
@@ -179,7 +179,7 @@ jobs:
     environment: Docker Hub
     if: ${{ github.event_name != 'pull_request' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
