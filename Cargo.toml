@@ -31,7 +31,7 @@ indicatif = "0.18.3"
 paste = "1.0.12"
 path-slash = "0.2.0"
 serde = { version = "1.0.216", features = ["derive"] }
-tar = "0.4.43"
+tar = "0.4.45"
 tracing-subscriber = { version = "0.3.17", features = ["fmt"] }
 ureq = { version = "3.0.12", default-features = false, features = [
     "gzip",
