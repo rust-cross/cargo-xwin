@@ -53,10 +53,10 @@ pub struct XWinOptions {
     )]
     pub xwin_variant: Vec<xwin::Variant>,
 
-    /// The version to retrieve, can either be a major version of 15, 16 or 17, or
+    /// The version to retrieve, can either be a major version of 15, 16, 17 or 18, or
     /// a "<major>.<minor>" version.
-    #[arg(long, env = "XWIN_VERSION", default_value = "17", hide = true)]
-    pub xwin_version: String,
+    #[arg(long, env = "XWIN_VERSION", default_value = "17")]
+    pub xwin_version: u8,
 
     /// If specified, this is the version of the SDK that the user wishes to use
     /// instead of defaulting to the latest SDK available in the the manifest
@@ -90,7 +90,7 @@ impl Default for XWinOptions {
             xwin_cache_dir: None,
             xwin_arch: vec![xwin::Arch::X86_64, xwin::Arch::Aarch64],
             xwin_variant: vec![xwin::Variant::Desktop],
-            xwin_version: "17".to_string(),
+            xwin_version: 17,
             xwin_sdk_version: None,
             xwin_crt_version: None,
             xwin_include_atl: false,
