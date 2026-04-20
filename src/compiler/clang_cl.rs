@@ -418,7 +418,7 @@ impl<'a> ClangCl<'a> {
 
         let manifest = xwin::manifest::get_manifest(
             ctx,
-            &self.xwin_options.xwin_version,
+            self.xwin_options.xwin_version,
             "release",
             manifest_pb.clone(),
         )?;
