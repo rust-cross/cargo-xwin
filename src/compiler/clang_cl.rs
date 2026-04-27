@@ -246,12 +246,23 @@ impl<'a> ClangCl<'a> {
             .map(|x| x.as_str().to_string())
             .collect();
         let mut downloaded_arches = HashSet::new();
-        if let Ok(content) = fs::read_to_string(&done_mark_file) {
-            for arch in content.split_whitespace() {
-                downloaded_arches.insert(arch.to_string());
+        let mut downloaded_files = HashSet::new();
+        let done_mark_file_content = fs::read_to_string(&done_mark_file);
+        if let Ok(content) = &done_mark_file_content {
+            let mut lines = content.lines();
+
+            if let Some(archs) = lines.next() {
+                for arch in archs.split_whitespace() {
+                    downloaded_arches.insert(arch.to_string());
+                }
+            }
+
+            for file in lines {
+                downloaded_files.insert(file);
             }
         }
-        if xwin_arches.difference(&downloaded_arches).next().is_none() {
+        if !self.xwin_options.update && xwin_arches.difference(&downloaded_arches).next().is_none()
+        {
             return Ok(());
         }
 
@@ -283,6 +294,13 @@ impl<'a> ClangCl<'a> {
             self.xwin_options.xwin_sdk_version.clone(),
             self.xwin_options.xwin_crt_version.clone(),
         )?;
+        if pruned
+            .payloads
+            .iter()
+            .all(|pay| downloaded_files.contains(pay.filename.as_str()))
+        {
+            return Ok(());
+        }
         let op = xwin::Ops::Splat(xwin::SplatConfig {
             include_debug_libs: self.xwin_options.xwin_include_debug_libs,
             include_debug_symbols: self.xwin_options.xwin_include_debug_symbols,
@@ -294,11 +312,14 @@ impl<'a> ClangCl<'a> {
             map: None,
         });
         let pkgs = pkg_manifest.packages;
+        let mut downloaded_files = HashSet::new();
 
         let mp = MultiProgress::with_draw_target(draw_target.into());
         let work_items: Vec<_> = pruned.payloads
         .into_iter()
         .map(|pay| {
+            downloaded_files.insert(pay.filename.clone());
+
             let prefix = match pay.kind {
                 xwin::PayloadKind::CrtHeaders => "CRT.headers".to_owned(),
                 xwin::PayloadKind::AtlHeaders => "ATL.headers".to_owned(),
@@ -381,7 +402,16 @@ impl<'a> ClangCl<'a> {
             .iter()
             .map(|x| x.as_str().to_string())
             .collect();
-        fs::write(done_mark_file, downloaded_arches.join(" "))?;
+        let downloaded_files: Vec<_> = downloaded_files
+            .into_iter()
+            .map(|x| x.to_string())
+            .collect();
+        let contents = String::from_iter([
+            &downloaded_arches.join(" "),
+            "\n",
+            &downloaded_files.join("\n"),
+        ]);
+        fs::write(done_mark_file, contents)?;
 
         let dl = cache_dir.join("dl");
         if dl.exists() {
