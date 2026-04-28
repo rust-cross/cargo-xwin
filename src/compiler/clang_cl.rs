@@ -123,7 +123,7 @@ impl<'a> ClangCl<'a> {
                 );
 
                 // Set LIB environment variable for clang-cl library path resolution
-                let lib_paths = vec![
+                let lib_paths = [
                     format!("{dir}/crt/lib/{arch}", dir = xwin_dir, arch = xwin_arch),
                     format!("{dir}/sdk/lib/um/{arch}", dir = xwin_dir, arch = xwin_arch),
                     format!(
@@ -214,7 +214,7 @@ impl<'a> ClangCl<'a> {
                 self.cleanup_partial_download(&cache_dir);
             }
 
-            match self.setup_msvc_crt(cache_dir.clone()) {
+            match self.setup_msvc_crt(cache_dir.clone(), false) {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = Some(e);
@@ -237,7 +237,7 @@ impl<'a> ClangCl<'a> {
     }
 
     /// Downloads and extracts the specified MSVC CRT components into the specified `cache_dir`.
-    pub fn setup_msvc_crt(&self, cache_dir: PathBuf) -> Result<()> {
+    pub fn setup_msvc_crt(&self, cache_dir: PathBuf, update: bool) -> Result<()> {
         let done_mark_file = cache_dir.join("DONE");
         let xwin_arches: HashSet<_> = self
             .xwin_options
@@ -246,12 +246,22 @@ impl<'a> ClangCl<'a> {
             .map(|x| x.as_str().to_string())
             .collect();
         let mut downloaded_arches = HashSet::new();
-        if let Ok(content) = fs::read_to_string(&done_mark_file) {
-            for arch in content.split_whitespace() {
-                downloaded_arches.insert(arch.to_string());
+        let mut downloaded_files = HashSet::new();
+        let done_mark_file_content = fs::read_to_string(&done_mark_file);
+        if let Ok(content) = &done_mark_file_content {
+            let mut lines = content.lines();
+
+            if let Some(archs) = lines.next() {
+                for arch in archs.split_whitespace() {
+                    downloaded_arches.insert(arch.to_string());
+                }
+            }
+
+            for file in lines {
+                downloaded_files.insert(file);
             }
         }
-        if xwin_arches.difference(&downloaded_arches).next().is_none() {
+        if !update && xwin_arches.difference(&downloaded_arches).next().is_none() {
             return Ok(());
         }
 
@@ -283,6 +293,13 @@ impl<'a> ClangCl<'a> {
             self.xwin_options.xwin_sdk_version.clone(),
             self.xwin_options.xwin_crt_version.clone(),
         )?;
+        if pruned
+            .payloads
+            .iter()
+            .all(|pay| downloaded_files.contains(pay.filename.as_str()))
+        {
+            return Ok(());
+        }
         let op = xwin::Ops::Splat(xwin::SplatConfig {
             include_debug_libs: self.xwin_options.xwin_include_debug_libs,
             include_debug_symbols: self.xwin_options.xwin_include_debug_symbols,
@@ -294,11 +311,14 @@ impl<'a> ClangCl<'a> {
             map: None,
         });
         let pkgs = pkg_manifest.packages;
+        let mut downloaded_files = HashSet::new();
 
         let mp = MultiProgress::with_draw_target(draw_target.into());
         let work_items: Vec<_> = pruned.payloads
         .into_iter()
         .map(|pay| {
+            downloaded_files.insert(pay.filename.clone());
+
             let prefix = match pay.kind {
                 xwin::PayloadKind::CrtHeaders => "CRT.headers".to_owned(),
                 xwin::PayloadKind::AtlHeaders => "ATL.headers".to_owned(),
@@ -381,7 +401,16 @@ impl<'a> ClangCl<'a> {
             .iter()
             .map(|x| x.as_str().to_string())
             .collect();
-        fs::write(done_mark_file, downloaded_arches.join(" "))?;
+        let downloaded_files: Vec<_> = downloaded_files
+            .into_iter()
+            .map(|x| x.to_string())
+            .collect();
+        let contents = String::from_iter([
+            &downloaded_arches.join(" "),
+            "\n",
+            &downloaded_files.join("\n"),
+        ]);
+        fs::write(done_mark_file, contents)?;
 
         let dl = cache_dir.join("dl");
         if dl.exists() {
@@ -550,7 +579,7 @@ pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> 
     let clang = which_in("clang", Some(env_path), env::current_dir()?)
         .ok()
         .and_then(|clang| {
-            if clang != PathBuf::from("/usr/bin/clang") {
+            if clang != Path::new("/usr/bin/clang") {
                 Some(clang)
             } else {
                 None
@@ -562,25 +591,19 @@ pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> 
         clang
     } else {
         // Try Xcode clang as fallback
-        match Command::new("xcrun").args(["--find", "clang"]).output() {
-            Ok(output) => {
-                if output.status.success() {
-                    if let Ok(path) = String::from_utf8(output.stdout) {
-                        PathBuf::from(path.trim())
-                    } else {
-                        // No usable clang found
-                        return Ok(());
-                    }
-                } else {
-                    // No usable clang found
-                    return Ok(());
-                }
-            }
-            _ => {
-                // No usable clang found
-                return Ok(());
-            }
+        let Ok(output) = Command::new("xcrun").args(["--find", "clang"]).output() else {
+            // No usable clang found
+            return Ok(());
+        };
+        if !output.status.success() {
+            // No usable clang found
+            return Ok(());
         }
+        let Ok(path) = String::from_utf8(output.stdout) else {
+            // No usable clang found
+            return Ok(());
+        };
+        PathBuf::from(path.trim())
     };
 
     let symlink = cache_dir.join("clang-cl");
