@@ -216,7 +216,7 @@ pub fn http_agent() -> Result<ureq::Agent> {
             )
             .build()
             .new_agent();
-        return Ok(agent);
+        Ok(agent)
     }
     #[cfg(all(not(feature = "native-tls"), feature = "rustls-tls"))]
     {

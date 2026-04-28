@@ -27,6 +27,10 @@ pub enum CacheSubcommand {
 pub struct CacheXwin {
     #[command(flatten)]
     pub xwin_options: XWinOptions,
+
+    /// Update the cache
+    #[arg(long)]
+    pub update: bool,
 }
 
 /// Pre-cache windows-msvc-sysroot for clang backend
@@ -76,7 +80,7 @@ impl CacheXwin {
         println!("📁 Cache directory: {}", xwin_cache_dir.display());
 
         let clang_cl = ClangCl::new(&self.xwin_options);
-        clang_cl.setup_msvc_crt(xwin_cache_dir)?;
+        clang_cl.setup_msvc_crt(xwin_cache_dir, self.update)?;
 
         println!("✅ xwin cache setup completed successfully!");
         Ok(())

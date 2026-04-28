@@ -123,7 +123,7 @@ impl<'a> ClangCl<'a> {
                 );
 
                 // Set LIB environment variable for clang-cl library path resolution
-                let lib_paths = vec![
+                let lib_paths = [
                     format!("{dir}/crt/lib/{arch}", dir = xwin_dir, arch = xwin_arch),
                     format!("{dir}/sdk/lib/um/{arch}", dir = xwin_dir, arch = xwin_arch),
                     format!(
@@ -214,7 +214,7 @@ impl<'a> ClangCl<'a> {
                 self.cleanup_partial_download(&cache_dir);
             }
 
-            match self.setup_msvc_crt(cache_dir.clone()) {
+            match self.setup_msvc_crt(cache_dir.clone(), false) {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = Some(e);
@@ -237,7 +237,7 @@ impl<'a> ClangCl<'a> {
     }
 
     /// Downloads and extracts the specified MSVC CRT components into the specified `cache_dir`.
-    pub fn setup_msvc_crt(&self, cache_dir: PathBuf) -> Result<()> {
+    pub fn setup_msvc_crt(&self, cache_dir: PathBuf, update: bool) -> Result<()> {
         let done_mark_file = cache_dir.join("DONE");
         let xwin_arches: HashSet<_> = self
             .xwin_options
@@ -261,8 +261,7 @@ impl<'a> ClangCl<'a> {
                 downloaded_files.insert(file);
             }
         }
-        if !self.xwin_options.update && xwin_arches.difference(&downloaded_arches).next().is_none()
-        {
+        if !update && xwin_arches.difference(&downloaded_arches).next().is_none() {
             return Ok(());
         }
 
@@ -580,7 +579,7 @@ pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> 
     let clang = which_in("clang", Some(env_path), env::current_dir()?)
         .ok()
         .and_then(|clang| {
-            if clang != PathBuf::from("/usr/bin/clang") {
+            if clang != Path::new("/usr/bin/clang") {
                 Some(clang)
             } else {
                 None
@@ -592,25 +591,19 @@ pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> 
         clang
     } else {
         // Try Xcode clang as fallback
-        match Command::new("xcrun").args(["--find", "clang"]).output() {
-            Ok(output) => {
-                if output.status.success() {
-                    if let Ok(path) = String::from_utf8(output.stdout) {
-                        PathBuf::from(path.trim())
-                    } else {
-                        // No usable clang found
-                        return Ok(());
-                    }
-                } else {
-                    // No usable clang found
-                    return Ok(());
-                }
-            }
-            _ => {
-                // No usable clang found
-                return Ok(());
-            }
+        let Ok(output) = Command::new("xcrun").args(["--find", "clang"]).output() else {
+            // No usable clang found
+            return Ok(());
+        };
+        if !output.status.success() {
+            // No usable clang found
+            return Ok(());
         }
+        let Ok(path) = String::from_utf8(output.stdout) else {
+            // No usable clang found
+            return Ok(());
+        };
+        PathBuf::from(path.trim())
     };
 
     let symlink = cache_dir.join("clang-cl");

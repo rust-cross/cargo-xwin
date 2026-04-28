@@ -25,10 +25,6 @@ pub struct XWinOptions {
     #[arg(long, env = "XWIN_CROSS_COMPILER", default_value = "clang-cl")]
     pub cross_compiler: CrossCompiler,
 
-    /// Update the cache
-    #[arg(long)]
-    pub update: bool,
-
     /// xwin cache directory
     #[arg(long, env = "XWIN_CACHE_DIR", hide = true)]
     pub xwin_cache_dir: Option<PathBuf>,
@@ -102,7 +98,6 @@ impl Default for XWinOptions {
             xwin_include_debug_symbols: false,
             cross_compiler: CrossCompiler::ClangCl,
             xwin_http_retries: 3,
-            update: false,
         }
     }
 }
