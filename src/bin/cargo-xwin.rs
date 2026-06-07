@@ -2,7 +2,7 @@ use std::env;
 use std::ffi::OsString;
 use std::process::Command;
 
-use cargo_xwin::{Build, Cache, Check, Clippy, Doc, Env, Run, Rustc, Test};
+use cargo_xwin::{Bench, Build, Cache, Check, Clippy, Doc, Env, Run, Rustc, Test};
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
@@ -26,6 +26,8 @@ pub enum Cli {
 #[derive(Debug, Subcommand)]
 #[command(version, display_order = 1)]
 pub enum Opt {
+    #[command(name = "bench")]
+    Bench(Bench),
     #[command(name = "build", alias = "b")]
     Build(Build),
     Check(Check),
@@ -49,6 +51,7 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli {
         Cli::Opt(opt) | Cli::Cargo(opt) => match opt {
+            Opt::Bench(bench) => bench.execute()?,
             Opt::Build(build) => build.execute()?,
             Opt::Run(run) => run.execute()?,
             Opt::Rustc(rustc) => rustc.execute()?,
