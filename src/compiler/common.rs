@@ -1,10 +1,65 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use fs_err as fs;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use which::which_in;
+
+/// Mimics Cargo's target resolution to find and parse custom JSON targets.
+pub fn resolve_target_info(target: &str) -> Result<(String, String, bool)> {
+    let mut target_path = None;
+
+    // 1. Explicit file path
+    if target.ends_with(".json") {
+        target_path = Some(PathBuf::from(target));
+    } else {
+        // 2. Check current directory for {target}.json
+        let local_file = PathBuf::from(format!("{}.json", target));
+        if local_file.exists() {
+            target_path = Some(local_file);
+        } else {
+            // 3. Check RUST_TARGET_PATH environment variable
+            if let Ok(rust_target_path) = std::env::var("RUST_TARGET_PATH") {
+                for dir in std::env::split_paths(&rust_target_path) {
+                    let p = dir.join(format!("{}.json", target));
+                    if p.exists() {
+                        target_path = Some(p);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // 4. If we found a JSON file, parse it
+    if let Some(path) = target_path {
+        let stem = path
+            .file_stem()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+
+        let content = fs::read_to_string(&path).context(format!(
+            "Failed to read custom target file: {}",
+            path.display()
+        ))?;
+
+        let json: serde_json::Value =
+            serde_json::from_str(&content).context("Failed to parse custom target JSON")?;
+
+        let llvm_target = json
+            .get("llvm-target")
+            .and_then(|v| v.as_str())
+            .context("Custom target JSON missing 'llvm-target' field")?
+            .to_string();
+
+        return Ok((stem, llvm_target, true));
+    }
+
+    // 5. No JSON file found; assume it's a built-in target (e.g., "x86_64-pc-windows-msvc")
+    Ok((target.to_string(), target.to_string(), false))
+}
 
 /// Sets up the environment path by adding necessary directories to the existing `PATH`.
 ///
