@@ -16,7 +16,7 @@ use xwin::util::ProgressTarget;
 use crate::cache::prepare_xwin_cache_dir;
 use crate::compiler::common::{
     adjust_canonicalization, default_build_target_from_config, get_rustflags, http_agent,
-    is_static_crt_enabled, setup_cmake_env, setup_env_path, setup_llvm_tools,
+    is_static_crt_enabled, resolve_target_info, setup_cmake_env, setup_env_path, setup_llvm_tools,
     setup_target_compiler_and_linker_env,
 };
 use crate::options::XWinOptions;
@@ -58,10 +58,12 @@ impl<'a> ClangCl<'a> {
         }
 
         for target in &targets {
-            if target.contains("msvc") {
+            let (cargo_target_name, llvm_target, is_custom_target) = resolve_target_info(target)?;
+
+            if llvm_target.contains("msvc") {
                 self.setup_msvc_crt_with_retry(xwin_cache_dir.clone())
                     .context("Failed to setup MSVC CRT")?;
-                let env_target = target.to_lowercase().replace('-', "_");
+                let env_target = cargo_target_name.to_lowercase().replace('-', "_");
 
                 setup_clang_cl_symlink(&env_path, &cache_dir)
                     .context("Failed to setup clang-cl symlink")?;
@@ -72,7 +74,7 @@ impl<'a> ClangCl<'a> {
                 let user_set_c_flags = env::var("CFLAGS").unwrap_or_default();
                 let user_set_cxx_flags = env::var("CXXFLAGS").unwrap_or_default();
 
-                let target_arch = target
+                let target_arch = llvm_target
                     .split_once('-')
                     .map(|(x, _)| x)
                     .context("invalid target triple")?;
@@ -83,7 +85,7 @@ impl<'a> ClangCl<'a> {
 
                 let xwin_dir = adjust_canonicalization(xwin_cache_dir.to_slash_lossy().to_string());
                 let mut cl_flags = vec![
-                    format!("--target={target}"),
+                    format!("--target={llvm_target}"),
                     "-Wno-unused-command-line-argument".to_string(),
                     "-fuse-ld=lld-link".to_string(),
                     format!("/imsvc {dir}/crt/include", dir = xwin_dir),
@@ -140,13 +142,26 @@ impl<'a> ClangCl<'a> {
                 };
                 cmd.env("LIB", lib_value);
 
-                let mut rustflags = get_rustflags(&workdir, target)?.unwrap_or_default();
+                let mut rustflags =
+                    get_rustflags(&workdir, &cargo_target_name)?.unwrap_or_default();
+                if is_custom_target {
+                    rustflags.flags.push("-Zunstable-options".to_string());
+
+                    let mut paths = std::env::var_os("RUST_TARGET_PATH")
+                        .map(|v| std::env::split_paths(&v).collect::<Vec<_>>())
+                        .unwrap_or_default();
+
+                    if !paths.contains(&workdir) {
+                        paths.insert(0, workdir.clone());
+                        cmd.env("RUST_TARGET_PATH", std::env::join_paths(paths)?);
+                    }
+                }
                 rustflags
                     .flags
                     .extend(["-C".to_string(), "linker-flavor=lld-link".to_string()]);
 
                 // Check if static CRT is enabled
-                let is_static_crt = is_static_crt_enabled(&workdir, target)?;
+                let is_static_crt = is_static_crt_enabled(&workdir, &cargo_target_name)?;
                 if is_static_crt {
                     // When using static CRT, we need to link against the static version of libucrt
                     // instead of the import library. This resolves issues with symbols like
@@ -190,7 +205,7 @@ impl<'a> ClangCl<'a> {
 
                 // CMake support
                 let cmake_toolchain = self
-                    .setup_cmake_toolchain(target, &xwin_cache_dir, is_static_crt)
+                    .setup_cmake_toolchain(&llvm_target, &xwin_cache_dir, is_static_crt)
                     .with_context(|| format!("Failed to setup CMake toolchain for {}", target))?;
                 setup_cmake_env(cmd, target, cmake_toolchain);
             }

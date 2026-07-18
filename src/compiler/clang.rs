@@ -50,14 +50,18 @@ impl Clang {
         }
 
         for target in &targets {
-            if target.contains("msvc") {
+            let (cargo_target_name, llvm_target, is_custom_target) =
+                crate::compiler::common::resolve_target_info(target)?;
+
+            if llvm_target.contains("msvc") {
                 let msvc_sysroot_dir = self
                     .setup_msvc_sysroot(cache_dir.clone())
                     .context("Failed to setup MSVC sysroot")?;
+
                 // x86_64-pc-windows-msvc -> x86_64-windows-msvc
-                let target_no_vendor = target.replace("-pc-", "-");
-                let target_unknown_vendor = target.replace("-pc-", "-unknown-");
-                let env_target = target.to_lowercase().replace('-', "_");
+                let target_no_vendor = llvm_target.replace("-pc-", "-");
+                let target_unknown_vendor = llvm_target.replace("-pc-", "-unknown-");
+                let env_target = cargo_target_name.to_lowercase().replace('-', "_");
 
                 setup_llvm_tools(&env_path, &cache_dir).context("Failed to setup LLVM tools")?;
                 setup_target_compiler_and_linker_env(cmd, &env_target, "clang");
@@ -87,7 +91,19 @@ impl Clang {
                     format!("-I{dir}/include -I{dir}/include/c++/stl -I{dir}/include/__msvc_vcruntime_intrinsics", dir = sysroot_dir),
                 );
 
-                let mut rustflags = get_rustflags(&workdir, target)?.unwrap_or_default();
+                let mut rustflags =
+                    get_rustflags(&workdir, &cargo_target_name)?.unwrap_or_default();
+                if is_custom_target {
+                    rustflags.flags.push("-Zunstable-options".to_string());
+                    let mut paths = std::env::var_os("RUST_TARGET_PATH")
+                        .map(|v| std::env::split_paths(&v).collect::<Vec<_>>())
+                        .unwrap_or_default();
+
+                    if !paths.contains(&workdir) {
+                        paths.insert(0, workdir.clone());
+                        cmd.env("RUST_TARGET_PATH", std::env::join_paths(paths)?);
+                    }
+                }
                 rustflags.flags.extend([
                     "-C".to_string(),
                     "linker-flavor=lld-link".to_string(),
@@ -96,7 +112,7 @@ impl Clang {
                 ]);
 
                 // Check if static CRT is enabled
-                let is_static_crt = is_static_crt_enabled(&workdir, target)?;
+                let is_static_crt = is_static_crt_enabled(&workdir, &cargo_target_name)?;
                 if is_static_crt {
                     // When using static CRT, we need to link against the static version of libucrt
                     // instead of the import library. This resolves issues with symbols like
@@ -129,7 +145,7 @@ impl Clang {
 
                 // CMake support
                 let cmake_toolchain = self
-                    .setup_cmake_toolchain(target, &sysroot_dir, &cache_dir, is_static_crt)
+                    .setup_cmake_toolchain(&llvm_target, &sysroot_dir, &cache_dir, is_static_crt)
                     .with_context(|| format!("Failed to setup CMake toolchain for {}", target))?;
                 setup_cmake_env(cmd, target, cmake_toolchain);
             }
