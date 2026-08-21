@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::convert::TryInto;
 use std::env;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
@@ -20,6 +20,60 @@ use crate::compiler::common::{
     setup_target_compiler_and_linker_env,
 };
 use crate::options::XWinOptions;
+
+const MSVC_INCLUDE_DIRS: [&str; 5] = [
+    "crt/include",
+    "sdk/include/ucrt",
+    "sdk/include/um",
+    "sdk/include/shared",
+    "sdk/include/winrt",
+];
+
+fn quoted_include_flags(xwin_dir: &str, prefix: &str) -> Vec<String> {
+    MSVC_INCLUDE_DIRS
+        .iter()
+        .map(|include_dir| format!(r#"{prefix}"{xwin_dir}/{include_dir}""#))
+        .collect()
+}
+
+fn target_rustflags_config(target: &str, rustflags: &cargo_config2::Flags) -> Result<String> {
+    let target = serde_json::to_string(target).context("Failed to encode target name")?;
+    let flags = serde_json::to_string(&rustflags.flags).context("Failed to encode target flags")?;
+    Ok(format!("target.{target}.rustflags={flags}"))
+}
+
+fn insert_cargo_config(cmd: &mut Command, config: String) {
+    let program = cmd.get_program().to_owned();
+    let args: Vec<OsString> = cmd.get_args().map(OsStr::to_owned).collect();
+    let envs: Vec<(OsString, Option<OsString>)> = cmd
+        .get_envs()
+        .map(|(key, value)| (key.to_owned(), value.map(OsStr::to_owned)))
+        .collect();
+    let current_dir = cmd.get_current_dir().map(Path::to_owned);
+    let separator = args
+        .iter()
+        .position(|arg| arg == "--")
+        .unwrap_or(args.len());
+
+    let mut replacement = Command::new(program);
+    replacement.args(&args[..separator]);
+    replacement.arg("--config").arg(config);
+    replacement.args(&args[separator..]);
+    for (key, value) in envs {
+        match value {
+            Some(value) => {
+                replacement.env(key, value);
+            }
+            None => {
+                replacement.env_remove(key);
+            }
+        }
+    }
+    if let Some(current_dir) = current_dir {
+        replacement.current_dir(current_dir);
+    }
+    *cmd = replacement;
+}
 
 #[derive(Debug)]
 pub struct ClangCl<'a> {
@@ -88,17 +142,14 @@ impl<'a> ClangCl<'a> {
                     format!("--target={llvm_target}"),
                     "-Wno-unused-command-line-argument".to_string(),
                     "-fuse-ld=lld-link".to_string(),
-                    format!("/imsvc {dir}/crt/include", dir = xwin_dir),
-                    format!("/imsvc {dir}/sdk/include/ucrt", dir = xwin_dir),
-                    format!("/imsvc {dir}/sdk/include/um", dir = xwin_dir),
-                    format!("/imsvc {dir}/sdk/include/shared", dir = xwin_dir),
-                    format!("/imsvc {dir}/sdk/include/winrt", dir = xwin_dir),
                 ];
+                cl_flags.extend(quoted_include_flags(&xwin_dir, "/imsvc "));
                 if !user_set_cl_flags.is_empty() {
                     cl_flags.push(user_set_cl_flags.clone());
                 }
                 let cl_flags = cl_flags.join(" ");
                 cmd.env("CL_FLAGS", &cl_flags);
+                cmd.env("CC_SHELL_ESCAPED_FLAGS", "1");
                 cmd.env(
                     format!("CFLAGS_{env_target}"),
                     format!("{cl_flags} {user_set_c_flags}",),
@@ -110,19 +161,10 @@ impl<'a> ClangCl<'a> {
 
                 cmd.env(
                     format!("BINDGEN_EXTRA_CLANG_ARGS_{env_target}"),
-                    format!(
-                        "-I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared -I{dir}/sdk/include/winrt",
-                        dir = xwin_dir
-                    )
+                    quoted_include_flags(&xwin_dir, "-I").join(" "),
                 );
 
-                cmd.env(
-                    "RCFLAGS",
-                    format!(
-                        "-I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared -I{dir}/sdk/include/winrt",
-                        dir = xwin_dir
-                    )
-                );
+                cmd.env("RCFLAGS", quoted_include_flags(&xwin_dir, "-I").join(" "));
 
                 // Set LIB environment variable for clang-cl library path resolution
                 let lib_paths = [
@@ -189,17 +231,19 @@ impl<'a> ClangCl<'a> {
                     dir = xwin_dir,
                     arch = xwin_arch
                 ));
-                // Remove RUSTFLAGS from environment so that the spawned Cargo respects our
-                // CARGO_TARGET_<triple>_RUSTFLAGS. When RUSTFLAGS is present, Cargo prioritizes
-                // it over CARGO_TARGET_<triple>_RUSTFLAGS. The flags from RUSTFLAGS are already
-                // included in `rustflags` via cargo-config2's resolution.
+                // A TOML array preserves spaces while keeping the flags scoped to this target.
+                // Keep the resolved flags to match the existing target environment behavior;
+                // global encoded rustflags would affect cross-target artifact dependencies.
                 cmd.env_remove("RUSTFLAGS");
-
-                // Use `CARGO_TARGET_<TRIPLE>_RUSTFLAGS` to avoid the flags being passed to artifact
-                // dependencies built for other targets.
-                cmd.env(
-                    format!("CARGO_TARGET_{}_RUSTFLAGS", env_target.to_uppercase()),
-                    rustflags.encode_space_separated()?,
+                cmd.env_remove("CARGO_ENCODED_RUSTFLAGS");
+                cmd.env_remove("CARGO_BUILD_RUSTFLAGS");
+                cmd.env_remove(format!(
+                    "CARGO_TARGET_{}_RUSTFLAGS",
+                    env_target.to_uppercase()
+                ));
+                insert_cargo_config(
+                    cmd,
+                    target_rustflags_config(&cargo_target_name, &rustflags)?,
                 );
                 cmd.env("PATH", &env_path);
 
@@ -627,6 +671,68 @@ pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> 
     }
     fs_err::os::unix::fs::symlink(clang, symlink)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn include_flags_quote_cache_paths_with_spaces() {
+        let xwin_dir = "/tmp/xwin cache";
+
+        let cl_flags = quoted_include_flags(xwin_dir, "/imsvc ");
+        assert_eq!(cl_flags.len(), MSVC_INCLUDE_DIRS.len());
+        assert_eq!(cl_flags[0], r#"/imsvc "/tmp/xwin cache/crt/include""#);
+
+        let include_flags = quoted_include_flags(xwin_dir, "-I").join(" ");
+        assert!(include_flags.contains(r#"-I"/tmp/xwin cache/sdk/include/winrt""#));
+        assert!(!include_flags.contains("-I/tmp/xwin cache"));
+    }
+
+    #[test]
+    fn target_rustflags_preserve_paths_with_spaces_and_target_scope() {
+        let mut rustflags = cargo_config2::Flags::default();
+        rustflags
+            .flags
+            .push("-Lnative=/tmp/xwin cache/crt/lib/x86_64".into());
+
+        let config = target_rustflags_config("x86_64-pc-windows-msvc", &rustflags).unwrap();
+        let (key, value) = config.split_once('=').unwrap();
+        let decoded: Vec<String> = serde_json::from_str(value).unwrap();
+
+        assert_eq!(key, r#"target."x86_64-pc-windows-msvc".rustflags"#);
+        assert_eq!(decoded, rustflags.flags);
+        assert!(value.contains("xwin cache"));
+    }
+
+    #[test]
+    fn cargo_config_precedes_trailing_arguments() {
+        let mut cmd = Command::new("cargo");
+        cmd.args(["test", "--locked", "--", "test_filter"]);
+        cmd.env_remove("CARGO");
+        cmd.current_dir("/tmp");
+
+        insert_cargo_config(&mut cmd, "target.test.rustflags=[]".into());
+
+        let args: Vec<_> = cmd.get_args().collect();
+        assert_eq!(
+            args,
+            [
+                "test",
+                "--locked",
+                "--config",
+                "target.test.rustflags=[]",
+                "--",
+                "test_filter",
+            ]
+        );
+        assert_eq!(cmd.get_current_dir(), Some(Path::new("/tmp")));
+        assert!(
+            cmd.get_envs()
+                .any(|(key, value)| key == "CARGO" && value.is_none())
+        );
+    }
 }
 
 #[cfg(not(target_os = "macos"))]
