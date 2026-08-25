@@ -91,6 +91,8 @@ The Microsoft CRT and Windows SDK can be customized using the following environm
 | `XWIN_INCLUDE_DEBUG_SYMBOLS` | `--xwin-include-debug-symbols` | Whether or not to include debug symbols (PDBs) in installation (default false).                                    |
 | `XWIN_HTTP_RETRIES`          | `--xwin-http-retries`          | Number of times to retry HTTP requests when downloading (default 3).                                               |
 
+The `clang-cl` backend supports cache paths containing whitespace for Rust linker flags and C, C++, or bindgen include paths. Projects that compile C or C++ through [`cc`](https://crates.io/crates/cc) require `cc` 1.1.11 or newer for such paths because cargo-xwin enables `CC_SHELL_ESCAPED_FLAGS` only in that case. Windows resource compilation still requires a cache path without whitespace because the `RCFLAGS` quoting contract is not defined here.
+
 ### CMake Support
 
 Some Rust crates use the [cmake](https://github.com/alexcrichton/cmake-rs) crate to build C/C++ dependencies,

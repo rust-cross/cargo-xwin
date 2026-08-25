@@ -1,7 +1,15 @@
 use paste::paste;
 
 macro_rules! cargo_command {
-    ($command: ident) => {
+    (@prepare_cargo $this:ident) => {
+        ($this.cargo.clone(), Vec::<String>::new())
+    };
+    (@prepare_cargo $this:ident, $trailing:ident) => {{
+        let mut cargo = $this.cargo.clone();
+        let trailing = std::mem::take(&mut cargo.$trailing);
+        (cargo, trailing)
+    }};
+    ($command: ident $(, $trailing:ident)?) => {
         paste! {
             pub mod [<$command:lower>] {
                 use std::ops::{Deref, DerefMut};
@@ -11,7 +19,7 @@ macro_rules! cargo_command {
                 use anyhow::{Context, Result};
                 use clap::Parser;
 
-                use crate::options::XWinOptions;
+                use crate::options::{RustflagsMode, XWinOptions, append_cargo_configs};
 
                 #[derive(Clone, Debug, Default, Parser)]
                 #[command(
@@ -50,12 +58,18 @@ macro_rules! cargo_command {
 
                     /// Generate cargo subcommand
                     pub fn build_command(&self) -> Result<Command> {
-                        let mut build = self.cargo.command();
-                        self.xwin.apply_command_env(
+                        let (cargo, trailing) = cargo_command!(@prepare_cargo self $(, $trailing)?);
+                        let mut build = cargo.command();
+                        let cargo_configs = self.xwin.prepare_command_env(
                             self.manifest_path.as_deref(),
-                            &self.cargo.common,
+                            &cargo.common,
                             &mut build,
+                            RustflagsMode::CargoConfig,
                         )?;
+                        append_cargo_configs(&mut build, cargo_configs);
+                        if !trailing.is_empty() {
+                            build.arg("--").args(trailing);
+                        }
                         Ok(build)
                     }
                 }
@@ -90,6 +104,6 @@ macro_rules! cargo_command {
 
 cargo_command!(Build);
 cargo_command!(Check);
-cargo_command!(Clippy);
+cargo_command!(Clippy, args);
 cargo_command!(Doc);
-cargo_command!(Rustc);
+cargo_command!(Rustc, args);

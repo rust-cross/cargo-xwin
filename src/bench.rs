@@ -6,7 +6,7 @@ use std::process::{self, Command};
 use anyhow::{Context, Result};
 use clap::Parser;
 
-use crate::options::XWinOptions;
+use crate::options::{RustflagsMode, XWinOptions, append_cargo_configs};
 
 /// Execute all benchmarks of a local package
 #[derive(Clone, Debug, Default, Parser)]
@@ -58,12 +58,24 @@ impl Bench {
 
     /// Generate cargo subcommand
     pub fn build_command(&self) -> Result<Command> {
-        let mut build = self.cargo.command();
-        self.xwin.apply_command_env(
+        let mut cargo = self.cargo.clone();
+        let bench_name = cargo.bench.bench_name.take();
+        let args = std::mem::take(&mut cargo.bench.args);
+        let mut build = cargo.command();
+        let cargo_configs = self.xwin.prepare_command_env(
             self.manifest_path.as_deref(),
-            &self.cargo.common,
+            &cargo.common,
             &mut build,
+            RustflagsMode::CargoConfig,
         )?;
+        append_cargo_configs(&mut build, cargo_configs);
+        if bench_name.is_some() || !args.is_empty() {
+            build.arg("--");
+            if let Some(bench_name) = bench_name {
+                build.arg(bench_name);
+            }
+            build.args(args);
+        }
         Ok(build)
     }
 }

@@ -6,7 +6,7 @@ use std::process::{self, Command};
 use anyhow::{Context, Result};
 use clap::Parser;
 
-use crate::options::XWinOptions;
+use crate::options::{RustflagsMode, XWinOptions, append_cargo_configs};
 
 /// Run a binary or example of the local package
 #[derive(Clone, Debug, Default, Parser)]
@@ -58,12 +58,19 @@ impl Run {
 
     /// Generate cargo subcommand
     pub fn build_command(&self) -> Result<Command> {
-        let mut build = self.cargo.command();
-        self.xwin.apply_command_env(
+        let mut cargo = self.cargo.clone();
+        let args = std::mem::take(&mut cargo.args);
+        let mut build = cargo.command();
+        let cargo_configs = self.xwin.prepare_command_env(
             self.manifest_path.as_deref(),
-            &self.cargo.common,
+            &cargo.common,
             &mut build,
+            RustflagsMode::CargoConfig,
         )?;
+        append_cargo_configs(&mut build, cargo_configs);
+        if !args.is_empty() {
+            build.arg("--").args(args);
+        }
         Ok(build)
     }
 }

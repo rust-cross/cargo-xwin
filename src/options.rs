@@ -18,6 +18,18 @@ pub enum CrossCompiler {
     Clang,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum RustflagsMode {
+    CargoConfig,
+    Environment,
+}
+
+pub(crate) fn append_cargo_configs(cmd: &mut Command, configs: Vec<String>) {
+    for config in configs {
+        cmd.arg("--config").arg(config);
+    }
+}
+
 /// common xwin options
 #[derive(Clone, Debug, Parser)]
 pub struct XWinOptions {
@@ -109,6 +121,17 @@ impl XWinOptions {
         cargo: &cargo_options::CommonOptions,
         cmd: &mut Command,
     ) -> Result<()> {
+        self.prepare_command_env(manifest_path, cargo, cmd, RustflagsMode::Environment)?;
+        Ok(())
+    }
+
+    pub(crate) fn prepare_command_env(
+        &self,
+        manifest_path: Option<&Path>,
+        cargo: &cargo_options::CommonOptions,
+        cmd: &mut Command,
+        rustflags_mode: RustflagsMode,
+    ) -> Result<Vec<String>> {
         let cache_dir = {
             let cache_dir = self.xwin_cache_dir.clone().unwrap_or_else(|| {
                 dirs::cache_dir()
@@ -121,13 +144,40 @@ impl XWinOptions {
         match self.cross_compiler {
             CrossCompiler::ClangCl => {
                 let clang_cl = crate::compiler::clang_cl::ClangCl::new(self);
-                clang_cl.apply_command_env(manifest_path, cargo, cache_dir, cmd)?;
+                clang_cl.apply_command_env(manifest_path, cargo, cache_dir, cmd, rustflags_mode)
             }
             CrossCompiler::Clang => {
                 let clang = crate::compiler::clang::Clang::new();
                 clang.apply_command_env(manifest_path, cargo, cache_dir, cmd)?;
+                Ok(Vec::new())
             }
         }
-        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cargo_configs_are_appended_before_trailing_arguments() {
+        let mut cmd = Command::new("cargo");
+        cmd.args(["test", "--locked"]);
+
+        append_cargo_configs(&mut cmd, vec!["target.test.rustflags=[]".into()]);
+        cmd.args(["--", "test_filter"]);
+
+        let args: Vec<_> = cmd.get_args().collect();
+        assert_eq!(
+            args,
+            [
+                "test",
+                "--locked",
+                "--config",
+                "target.test.rustflags=[]",
+                "--",
+                "test_filter",
+            ]
+        );
     }
 }
