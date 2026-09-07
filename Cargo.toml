@@ -50,3 +50,6 @@ rustls-tls = ["ureq/rustls", "ureq/platform-verifier"]
 # If this feature is enabled we instead use the native TLS implementation for the
 # target platform
 native-tls = ["ureq/native-tls"]
+
+[dev-dependencies]
+tempfile = "3"
