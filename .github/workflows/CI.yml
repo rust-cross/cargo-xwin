@@ -33,20 +33,19 @@ jobs:
       XWIN_CROSS_COMPILER: ${{ matrix.cross-compiler }}
     steps:
       - uses: actions/checkout@v7
-      - uses: seanmiddleditch/gha-setup-ninja@master
       - name: Install dependencies
         if: startsWith(matrix.os, 'macos')
         run: |
-          brew install gnu-tar llvm cmake
+          brew install gnu-tar llvm cmake ninja
           echo "/usr/local/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
       - name: Install dependencies
         if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt-get update
-          sudo apt-get install --quiet -y clang wine-stable
-      - name: Install Clang
+          sudo apt-get install --quiet -y clang wine-stable ninja-build
+      - name: Install dependencies
         if: startsWith(matrix.os, 'windows')
-        run: choco install -y llvm
+        run: choco install -y llvm ninja
       - uses: dtolnay/rust-toolchain@master
         id: rustup
         with:

@@ -9,10 +9,10 @@ use path_slash::PathExt;
 use serde::Deserialize;
 
 use crate::compiler::common::{
-    adjust_canonicalization, default_build_target_from_config, get_rustflags, http_agent,
-    is_static_crt_enabled, setup_cmake_env, setup_env_path, setup_llvm_tools,
-    setup_target_compiler_and_linker_env,
+    adjust_canonicalization, default_build_target_from_config, http_agent, is_static_crt_enabled,
+    setup_cmake_env, setup_env_path, setup_llvm_tools, setup_target_compiler_and_linker_env,
 };
+use crate::compiler::rustflags::CargoRustFlags;
 
 const MSVC_SYSROOT_DIR: &str = "windows-msvc-sysroot";
 const MSVC_SYSROOT_REPOSITORY: &str = "trcrsired/windows-msvc-sysroot";
@@ -91,8 +91,7 @@ impl Clang {
                     format!("-I{dir}/include -I{dir}/include/c++/stl -I{dir}/include/__msvc_vcruntime_intrinsics", dir = sysroot_dir),
                 );
 
-                let mut rustflags =
-                    get_rustflags(&workdir, &cargo_target_name)?.unwrap_or_default();
+                let mut rustflags = CargoRustFlags::load(&workdir, &cargo_target_name)?;
                 if is_custom_target {
                     rustflags.flags.push("-Zunstable-options".to_string());
                     let mut paths = std::env::var_os("RUST_TARGET_PATH")
@@ -125,22 +124,11 @@ impl Clang {
                     ]);
                 }
 
-                rustflags.push(format!(
+                rustflags.flags.push(format!(
                     "-Lnative={dir}/lib/{target_unknown_vendor}",
                     dir = sysroot_dir,
                 ));
-                // Remove RUSTFLAGS from environment so that the spawned Cargo respects our
-                // CARGO_TARGET_<triple>_RUSTFLAGS. When RUSTFLAGS is present, Cargo prioritizes
-                // it over CARGO_TARGET_<triple>_RUSTFLAGS. The flags from RUSTFLAGS are already
-                // included in `rustflags` via cargo-config2's resolution.
-                cmd.env_remove("RUSTFLAGS");
-
-                // Use `CARGO_TARGET_<TRIPLE>_RUSTFLAGS` to avoid the flags being passed to artifact
-                // dependencies built for other targets.
-                cmd.env(
-                    format!("CARGO_TARGET_{}_RUSTFLAGS", env_target.to_uppercase()),
-                    rustflags.encode_space_separated()?,
-                );
+                rustflags.apply(cmd)?;
                 cmd.env("PATH", &env_path);
 
                 // CMake support

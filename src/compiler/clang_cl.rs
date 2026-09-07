@@ -15,10 +15,11 @@ use xwin::util::ProgressTarget;
 
 use crate::cache::prepare_xwin_cache_dir;
 use crate::compiler::common::{
-    adjust_canonicalization, default_build_target_from_config, get_rustflags, http_agent,
-    is_static_crt_enabled, resolve_target_info, setup_cmake_env, setup_env_path, setup_llvm_tools,
+    adjust_canonicalization, default_build_target_from_config, http_agent, is_static_crt_enabled,
+    resolve_target_info, setup_cmake_env, setup_env_path, setup_llvm_tools,
     setup_target_compiler_and_linker_env,
 };
+use crate::compiler::rustflags::CargoRustFlags;
 use crate::options::XWinOptions;
 
 #[derive(Debug)]
@@ -142,8 +143,7 @@ impl<'a> ClangCl<'a> {
                 };
                 cmd.env("LIB", lib_value);
 
-                let mut rustflags =
-                    get_rustflags(&workdir, &cargo_target_name)?.unwrap_or_default();
+                let mut rustflags = CargoRustFlags::load(&workdir, &cargo_target_name)?;
                 if is_custom_target {
                     rustflags.flags.push("-Zunstable-options".to_string());
 
@@ -174,33 +174,22 @@ impl<'a> ClangCl<'a> {
                     ]);
                 }
 
-                rustflags.push(format!(
+                rustflags.flags.push(format!(
                     "-Lnative={dir}/crt/lib/{arch}",
                     dir = xwin_dir,
                     arch = xwin_arch
                 ));
-                rustflags.push(format!(
+                rustflags.flags.push(format!(
                     "-Lnative={dir}/sdk/lib/um/{arch}",
                     dir = xwin_dir,
                     arch = xwin_arch
                 ));
-                rustflags.push(format!(
+                rustflags.flags.push(format!(
                     "-Lnative={dir}/sdk/lib/ucrt/{arch}",
                     dir = xwin_dir,
                     arch = xwin_arch
                 ));
-                // Remove RUSTFLAGS from environment so that the spawned Cargo respects our
-                // CARGO_TARGET_<triple>_RUSTFLAGS. When RUSTFLAGS is present, Cargo prioritizes
-                // it over CARGO_TARGET_<triple>_RUSTFLAGS. The flags from RUSTFLAGS are already
-                // included in `rustflags` via cargo-config2's resolution.
-                cmd.env_remove("RUSTFLAGS");
-
-                // Use `CARGO_TARGET_<TRIPLE>_RUSTFLAGS` to avoid the flags being passed to artifact
-                // dependencies built for other targets.
-                cmd.env(
-                    format!("CARGO_TARGET_{}_RUSTFLAGS", env_target.to_uppercase()),
-                    rustflags.encode_space_separated()?,
-                );
+                rustflags.apply(cmd)?;
                 cmd.env("PATH", &env_path);
 
                 // CMake support
