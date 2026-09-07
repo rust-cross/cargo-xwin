@@ -60,6 +60,16 @@ cargo xwin cache windows-msvc-sysroot
 
 This is useful for Docker images or CI/CD pipelines where you want to cache dependencies ahead of time.
 
+The clang-cl backend supports cache paths containing spaces. If you configure
+`target.<triple>.rustflags` in Cargo configuration, use an array (for example,
+`rustflags = ["-C", "target-feature=+crt-static"]`): Cargo cannot merge its
+space-preserving array override with string-valued rustflags. Native compiler
+flags use shell quoting through `CC_SHELL_ESCAPED_FLAGS=1`.
+
+`cargo xwin env` cannot export flags that require Cargo `--config` arguments,
+including library paths containing spaces. Use `cargo xwin build`, `check`, or
+another build command directly in that case.
+
 ### Run tests with wine
 
 With wine installed, you can run tests with the `cargo xwin test` command,

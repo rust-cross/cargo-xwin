@@ -35,6 +35,11 @@ impl Env {
     pub fn execute(&self) -> Result<()> {
         let mut env = self.build_command()?;
 
+        anyhow::ensure!(
+            !env.get_args().any(|arg| arg == "--config"),
+            "these paths or rustflags require Cargo --config arguments and cannot be exported as environment variables; use cargo xwin build/check/run instead"
+        );
+
         for target in &self.target {
             if target.contains("msvc") {
                 if env::var_os("WINEDEBUG").is_none() {
@@ -49,11 +54,14 @@ impl Env {
         }
 
         for (key, value) in env.get_envs() {
-            println!(
-                "export {}=\"{}\";",
-                key.to_string_lossy(),
-                value.unwrap_or_default().to_string_lossy()
-            );
+            match value {
+                Some(value) => println!(
+                    "export {}={};",
+                    key.to_string_lossy(),
+                    shlex::try_quote(&value.to_string_lossy())?
+                ),
+                None => println!("unset {};", key.to_string_lossy()),
+            }
         }
 
         Ok(())

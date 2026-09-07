@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 pub struct CargoRustFlags {
     pub flags: Vec<String>,
     env_key: String,
+    target: String,
 }
 
 impl CargoRustFlags {
@@ -37,6 +38,7 @@ impl CargoRustFlags {
             return Ok(Self {
                 flags: config.rustflags(target)?.unwrap_or_default().flags,
                 env_key,
+                target: target.to_owned(),
             });
         }
         // Resolve once with an empty build fallback to distinguish target flags
@@ -66,6 +68,7 @@ impl CargoRustFlags {
         Ok(Self {
             flags: flags.flags,
             env_key,
+            target: target.to_owned(),
         })
     }
 
@@ -73,7 +76,22 @@ impl CargoRustFlags {
         let mut flags = cargo_config2::Flags::default();
         flags.flags = self.flags;
         cmd.env_remove("RUSTFLAGS");
-        cmd.env(&self.env_key, flags.encode_space_separated()?);
+        match flags.encode_space_separated() {
+            Ok(value) => {
+                cmd.env(&self.env_key, value);
+            }
+            Err(_) => {
+                // Cargo merges this array with target configuration, just like the
+                // environment transport. Only export our additions, not resolved
+                // target config, to avoid applying user flags twice.
+                let target = toml::Value::String(self.target);
+                let value =
+                    toml::Value::Array(flags.flags.into_iter().map(toml::Value::String).collect());
+                cmd.arg("--config")
+                    .arg(format!("target.{target}.rustflags={value}"));
+                cmd.env_remove(&self.env_key);
+            }
+        }
         Ok(())
     }
 }
@@ -161,68 +179,91 @@ mod tests {
                 vec![],
             ),
         ];
-        for (name, config, extra_env, expected) in cases {
-            let dir = tempfile::tempdir()?;
-            fs::create_dir_all(dir.path().join(".cargo"))?;
-            fs::create_dir_all(dir.path().join("src"))?;
-            fs::write(
-                dir.path().join("Cargo.toml"),
-                "[package]\nname = \"flags-probe\"\nversion = \"0.1.0\"\nedition = \"2021\"\n[workspace]\n",
-            )?;
-            fs::write(dir.path().join("src/lib.rs"), "")?;
-            fs::write(
-                dir.path().join("build.rs"),
-                "#[cfg(from_xwin)] compile_error!(\"target flags reached host build script\"); fn main() {}",
-            )?;
-            fs::write(dir.path().join(".cargo/config.toml"), config)?;
-            let mut vars: BTreeMap<OsString, OsString> = env::vars_os()
-                .filter(|(key, _)| {
-                    !key.to_string_lossy().starts_with("CARGO")
-                        && !key.to_string_lossy().starts_with("RUST")
-                })
-                .collect();
-            vars.insert(
-                "CARGO_HOME".into(),
-                dir.path().join("cargo-home").into_os_string(),
-            );
-            for (key, value) in extra_env {
-                vars.insert(key.into(), value.into());
-            }
-            let mut flags = CargoRustFlags::load_with_env(dir.path(), target, vars.clone())?;
-            flags.flags.push("--cfg=from_xwin".into());
-            let mut cmd = Command::new("cargo");
-            cmd.env_clear().envs(vars).current_dir(dir.path()).args([
-                "check",
-                "--offline",
-                "--target",
-                target,
-                "-v",
-            ]);
-            flags.apply(&mut cmd)?;
-            let output = cmd.output()?;
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            assert!(output.status.success(), "{name}: {stderr}");
-            let invocation = stderr
-                .lines()
-                .find(|line| line.contains("--crate-name flags_probe"))
-                .unwrap();
-            for flag in [
-                "from_target",
-                "from_cfg",
-                "from_build",
-                "from_env",
-                "from_global",
-                "from_encoded",
-                "from_xwin",
-            ] {
-                let count = usize::from(
-                    (flag == "from_xwin" && !name.contains("encoded")) || expected.contains(&flag),
+        for spaced in [false, true] {
+            for (name, config, extra_env, expected) in cases.clone() {
+                let dir = tempfile::tempdir()?;
+                fs::create_dir_all(dir.path().join(".cargo"))?;
+                fs::create_dir_all(dir.path().join("src"))?;
+                fs::write(
+                    dir.path().join("Cargo.toml"),
+                    "[package]\nname = \"flags-probe\"\nversion = \"0.1.0\"\nedition = \"2021\"\n[workspace]\n",
+                )?;
+                fs::write(
+                    dir.path().join("src/lib.rs"),
+                    if !spaced || name.contains("encoded") {
+                        ""
+                    } else {
+                        "#[cfg(not(cache_path = \"directory with spaces\"))] compile_error!(\"space-containing flag was lost\");"
+                    },
+                )?;
+                fs::write(
+                    dir.path().join("build.rs"),
+                    "#[cfg(from_xwin)] compile_error!(\"target flags reached host build script\"); fn main() {}",
+                )?;
+                fs::write(dir.path().join(".cargo/config.toml"), config)?;
+                let mut vars: BTreeMap<OsString, OsString> = env::vars_os()
+                    .filter(|(key, _)| {
+                        !key.to_string_lossy().starts_with("CARGO")
+                            && !key.to_string_lossy().starts_with("RUST")
+                    })
+                    .collect();
+                vars.insert(
+                    "CARGO_HOME".into(),
+                    dir.path().join("cargo-home").into_os_string(),
                 );
-                assert_eq!(
-                    invocation.matches(&format!("--cfg={flag}")).count(),
-                    count,
-                    "{name}: {invocation}"
-                );
+                for (key, value) in extra_env {
+                    vars.insert(key.into(), value.into());
+                }
+                let mut flags = CargoRustFlags::load_with_env(dir.path(), target, vars.clone())?;
+                flags.flags.push("--cfg=from_xwin".into());
+                if spaced {
+                    flags
+                        .flags
+                        .push("--cfg=cache_path=\"directory with spaces\"".into());
+                }
+                let mut cmd = Command::new("cargo");
+                cmd.env_clear().envs(vars).current_dir(dir.path()).args([
+                    "check",
+                    "--offline",
+                    "--target",
+                    target,
+                    "-v",
+                ]);
+                flags.apply(&mut cmd)?;
+                let output = cmd.output()?;
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if spaced && name == "string" {
+                    // Cargo cannot merge an array CLI override with a string in a file.
+                    assert!(
+                        stderr.contains("expected string, but found array"),
+                        "{stderr}"
+                    );
+                    continue;
+                }
+                assert!(output.status.success(), "{name}, spaced={spaced}: {stderr}");
+                let invocation = stderr
+                    .lines()
+                    .find(|line| line.contains("--crate-name flags_probe"))
+                    .unwrap();
+                for flag in [
+                    "from_target",
+                    "from_cfg",
+                    "from_build",
+                    "from_env",
+                    "from_global",
+                    "from_encoded",
+                    "from_xwin",
+                ] {
+                    let count = usize::from(
+                        (flag == "from_xwin" && !name.contains("encoded"))
+                            || expected.contains(&flag),
+                    );
+                    assert_eq!(
+                        invocation.matches(&format!("--cfg={flag}")).count(),
+                        count,
+                        "{name}: {invocation}"
+                    );
+                }
             }
         }
         Ok(())

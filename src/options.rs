@@ -103,6 +103,39 @@ impl Default for XWinOptions {
 }
 
 impl XWinOptions {
+    /// Configure a command produced by cargo-options before adding arguments
+    /// intended for the program, test harness, or compiler after `--`.
+    pub(crate) fn configure_command(
+        &self,
+        manifest_path: Option<&Path>,
+        cargo: &cargo_options::CommonOptions,
+        original: Command,
+    ) -> Result<Command> {
+        let mut cmd = Command::new(original.get_program());
+        for (key, value) in original.get_envs() {
+            match value {
+                Some(value) => {
+                    cmd.env(key, value);
+                }
+                None => {
+                    cmd.env_remove(key);
+                }
+            }
+        }
+        if let Some(cwd) = original.get_current_dir() {
+            cmd.current_dir(cwd);
+        }
+        let args: Vec<_> = original.get_args().collect();
+        let split = args
+            .iter()
+            .position(|arg| *arg == "--")
+            .unwrap_or(args.len());
+        cmd.args(&args[..split]);
+        self.apply_command_env(manifest_path, cargo, &mut cmd)?;
+        cmd.args(&args[split..]);
+        Ok(cmd)
+    }
+
     pub fn apply_command_env(
         &self,
         manifest_path: Option<&Path>,

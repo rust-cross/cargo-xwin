@@ -58,13 +58,11 @@ impl Run {
 
     /// Generate cargo subcommand
     pub fn build_command(&self) -> Result<Command> {
-        let mut build = self.cargo.command();
-        self.xwin.apply_command_env(
+        self.xwin.configure_command(
             self.manifest_path.as_deref(),
             &self.cargo.common,
-            &mut build,
-        )?;
-        Ok(build)
+            self.cargo.command(),
+        )
     }
 }
 

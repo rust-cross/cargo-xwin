@@ -72,6 +72,14 @@ jobs:
           cargo run --release xwin build --target x86_64-pc-windows-msvc --manifest-path tests/hello-rustls/Cargo.toml
           # Test using default build target from config
           cargo run --release xwin build --manifest-path tests/hello-windows/Cargo.toml
+      - name: xwin build - cache paths containing spaces
+        if: matrix.cross-compiler == 'clang-cl'
+        env:
+          XWIN_CACHE_DIR: ${{ runner.temp }}/xwin cache
+          CARGO_TARGET_DIR: ${{ runner.temp }}/cargo target
+        run: |
+          target/release/cargo-xwin build --locked --target x86_64-pc-windows-msvc --manifest-path tests/cache-paths/Cargo.toml
+          target/release/cargo-xwin rustc --locked --target x86_64-pc-windows-msvc --manifest-path tests/cache-paths/Cargo.toml -- --print cfg
       - name: xwin build - x86_64 static CRT
         env:
           RUSTFLAGS: "-C target-feature=+crt-static"
