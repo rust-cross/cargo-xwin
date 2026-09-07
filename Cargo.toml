@@ -5,7 +5,6 @@ edition = "2024"
 description = "Cross compile Cargo project to Windows MSVC target with ease"
 license = "MIT"
 keywords = ["windows", "cargo", "msvc"]
-readme = "README.md"
 repository = "https://github.com/rust-cross/cargo-xwin"
 rust-version = "1.89"
 
