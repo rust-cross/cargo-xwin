@@ -85,16 +85,15 @@ impl<'a> ClangCl<'a> {
                 };
 
                 let xwin_dir = adjust_canonicalization(xwin_cache_dir.to_slash_lossy().to_string());
+                let (msvc_includes, include_flags) = include_flags(&xwin_dir)?;
                 let mut cl_flags = vec![
                     format!("--target={llvm_target}"),
                     "-Wno-unused-command-line-argument".to_string(),
                     "-fuse-ld=lld-link".to_string(),
-                    format!("/imsvc {dir}/crt/include", dir = xwin_dir),
-                    format!("/imsvc {dir}/sdk/include/ucrt", dir = xwin_dir),
-                    format!("/imsvc {dir}/sdk/include/um", dir = xwin_dir),
-                    format!("/imsvc {dir}/sdk/include/shared", dir = xwin_dir),
-                    format!("/imsvc {dir}/sdk/include/winrt", dir = xwin_dir),
+                    msvc_includes,
                 ];
+                // cc-rs otherwise splits CFLAGS/CXXFLAGS on whitespace alone.
+                cmd.env("CC_SHELL_ESCAPED_FLAGS", "1");
                 if !user_set_cl_flags.is_empty() {
                     cl_flags.push(user_set_cl_flags.clone());
                 }
@@ -111,19 +110,9 @@ impl<'a> ClangCl<'a> {
 
                 cmd.env(
                     format!("BINDGEN_EXTRA_CLANG_ARGS_{env_target}"),
-                    format!(
-                        "-I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared -I{dir}/sdk/include/winrt",
-                        dir = xwin_dir
-                    )
+                    &include_flags,
                 );
-
-                cmd.env(
-                    "RCFLAGS",
-                    format!(
-                        "-I{dir}/crt/include -I{dir}/sdk/include/ucrt -I{dir}/sdk/include/um -I{dir}/sdk/include/shared -I{dir}/sdk/include/winrt",
-                        dir = xwin_dir
-                    )
-                );
+                cmd.env("RCFLAGS", &include_flags);
 
                 // Set LIB environment variable for clang-cl library path resolution
                 let lib_paths = [
@@ -640,4 +629,53 @@ pub fn setup_clang_cl_symlink(env_path: &OsStr, cache_dir: &Path) -> Result<()> 
         }
     }
     Ok(())
+}
+
+/// Serialize paths for shell-style parsers used by native build tools.
+fn include_flags(xwin_dir: &str) -> Result<(String, String)> {
+    let mut msvc = Vec::new();
+    let mut clang = Vec::new();
+    for suffix in [
+        "crt/include",
+        "sdk/include/ucrt",
+        "sdk/include/um",
+        "sdk/include/shared",
+        "sdk/include/winrt",
+    ] {
+        let path = format!("{xwin_dir}/{suffix}");
+        msvc.push("/imsvc".to_owned());
+        msvc.push(path.clone());
+        clang.push(format!("-I{path}"));
+    }
+    Ok((
+        shlex::try_join(msvc.iter().map(String::as_str))?,
+        shlex::try_join(clang.iter().map(String::as_str))?,
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn include_arguments_preserve_paths() -> Result<()> {
+        for root in [
+            "/cache/xwin",
+            "/cache with spaces/xwin",
+            "/cache's \"quoted\" $directory/xwin",
+            "C:/Users/Build User/xwin",
+        ] {
+            let (msvc, clang) = include_flags(root)?;
+            let msvc = shlex::split(&msvc).unwrap();
+            let clang = shlex::split(&clang).unwrap();
+            assert_eq!(msvc.len(), 10);
+            assert_eq!(clang.len(), 5);
+            for (pair, flag) in msvc.chunks_exact(2).zip(clang) {
+                assert_eq!(pair[0], "/imsvc");
+                assert!(pair[1].starts_with(&format!("{root}/")));
+                assert_eq!(flag, format!("-I{}", pair[1]));
+            }
+        }
+        Ok(())
+    }
 }
