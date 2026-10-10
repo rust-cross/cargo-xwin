@@ -174,7 +174,10 @@ pub(crate) fn configure_wine_runner(cmd: &mut Command) {
             cmd.env("WINEDEBUG", "-all");
         }
 
-        let runner_env = format!("CARGO_TARGET_{}_RUNNER", target.to_uppercase().replace('-', "_"));
+        let runner_env = format!(
+            "CARGO_TARGET_{}_RUNNER",
+            target.to_uppercase().replace('-', "_")
+        );
         if env::var_os(&runner_env).is_none() {
             cmd.env(runner_env, "wine");
         }
@@ -194,7 +197,8 @@ fn msvc_targets(cmd: &Command) -> Vec<String> {
         let target = if arg == "--target" {
             args.next().and_then(|value| value.to_str())
         } else {
-            arg.to_str().and_then(|value| value.strip_prefix("--target="))
+            arg.to_str()
+                .and_then(|value| value.strip_prefix("--target="))
         };
         if let Some(target) = target {
             if target.contains("msvc") {
