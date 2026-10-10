@@ -93,7 +93,8 @@ jobs:
       - name: xwin test - x86_64
         if: startsWith(matrix.os, 'ubuntu')
         run: |
-          cargo run --release xwin test --target x86_64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml
+          cargo run --release xwin test --target x86_64-pc-windows-msvc --manifest-path tests/hello-windows/Cargo.toml -- --nocapture
+          cargo run --release xwin test --manifest-path tests/hello-windows/Cargo.toml -- --nocapture
       - name: xwin build - bindeps cross-target (nightly only)
         if: startsWith(matrix.os, 'ubuntu') && matrix.toolchain == 'nightly'
         run: |

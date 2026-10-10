@@ -1,3 +1,4 @@
+use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -162,5 +163,87 @@ impl XWinOptions {
             }
         }
         Ok(())
+    }
+}
+
+
+/// Configure Wine for each Windows MSVC target in the final Cargo command.
+/// This also handles targets added from Cargo's build.target configuration.
+pub(crate) fn configure_wine_runner(cmd: &mut Command) {
+    for target in msvc_targets(cmd) {
+        if env::var_os("WINEDEBUG").is_none() {
+            cmd.env("WINEDEBUG", "-all");
+        }
+
+        let runner_env = format!("CARGO_TARGET_{}_RUNNER", target.to_uppercase().replace('-', "_"));
+        if env::var_os(&runner_env).is_none() {
+            cmd.env(runner_env, "wine");
+        }
+    }
+}
+
+/// Cargo arguments after `--` belong to the test binary, not to Cargo.
+fn msvc_targets(cmd: &Command) -> Vec<String> {
+    let mut targets = Vec::new();
+    let mut args = cmd.get_args();
+
+    while let Some(arg) = args.next() {
+        if arg == "--" {
+            break;
+        }
+
+        let target = if arg == "--target" {
+            args.next().and_then(|value| value.to_str())
+        } else {
+            arg.to_str().and_then(|value| value.strip_prefix("--target="))
+        };
+        if let Some(target) = target {
+            if target.contains("msvc") {
+                targets.push(target.to_owned());
+            }
+        }
+    }
+
+    targets
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_msvc_targets_from_final_cargo_command() {
+        let mut cmd = Command::new("cargo");
+        cmd.args([
+            "test",
+            "--target",
+            "x86_64-pc-windows-msvc",
+            "--target=aarch64-pc-windows-msvc",
+            "--",
+            "--target",
+            "ignored-windows-msvc",
+        ]);
+
+        assert_eq!(
+            msvc_targets(&cmd),
+            vec![
+                "x86_64-pc-windows-msvc".to_owned(),
+                "aarch64-pc-windows-msvc".to_owned(),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_msvc_targets_ignore_non_msvc_and_harness_args() {
+        let mut cmd = Command::new("cargo");
+        cmd.args([
+            "test",
+            "--target",
+            "x86_64-unknown-linux-gnu",
+            "--",
+            "--target=x86_64-pc-windows-msvc",
+        ]);
+
+        assert!(msvc_targets(&cmd).is_empty());
     }
 }
