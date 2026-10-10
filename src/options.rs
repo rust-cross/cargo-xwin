@@ -37,7 +37,6 @@ pub struct XWinOptions {
             .map(|s| s.parse::<xwin::Arch>().unwrap()),
         value_delimiter = ',',
         default_values_t = vec![xwin::Arch::X86_64, xwin::Arch::Aarch64],
-        hide = true,
     )]
     pub xwin_arch: Vec<xwin::Arch>,
 

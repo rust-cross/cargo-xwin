@@ -88,3 +88,18 @@ impl From<cargo_options::Test> for Test {
         }
     }
 }
+
+#[cfg(test)]
+mod cli_help_tests {
+    use super::*;
+    use clap::CommandFactory;
+
+    #[test]
+    fn xwin_arch_is_visible_in_help() {
+        let mut command = Test::command();
+        let help = command.render_long_help().to_string();
+
+        assert!(help.contains("--xwin-arch"));
+        assert!(help.contains("--xwin-version"));
+    }
+}
