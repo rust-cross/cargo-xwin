@@ -1,4 +1,3 @@
-use std::env;
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::process::{self, Command};
@@ -35,18 +34,7 @@ impl Run {
     pub fn execute(&self) -> Result<()> {
         let mut run = self.build_command()?;
 
-        for target in &self.cargo.target {
-            if target.contains("msvc") {
-                if env::var_os("WINEDEBUG").is_none() {
-                    run.env("WINEDEBUG", "-all");
-                }
-                let env_target = target.to_uppercase().replace('-', "_");
-                let runner_env = format!("CARGO_TARGET_{}_RUNNER", env_target);
-                if env::var_os(&runner_env).is_none() {
-                    run.env(runner_env, "wine");
-                }
-            }
-        }
+        crate::options::configure_wine_runner(&mut run);
 
         let mut child = run.spawn().context("Failed to run cargo run")?;
         let status = child.wait().expect("Failed to wait on cargo run process");
