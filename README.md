@@ -97,9 +97,24 @@ The Microsoft CRT and Windows SDK can be customized using the following environm
 | `XWIN_CRT_VERSION`           | `--xwin-crt-version`           | The CRT version to retrieve, defaults to the latest version                                                        |
 | `XWIN_INCLUDE_ATL`           | `--xwin-include-atl`           | Whether to include the Active Template Library (ATL) in the installation                                           |
 | `XWIN_CACHE_DIR`             | `--xwin-cache-dir`             | xwin cache directory to put CRT and SDK files                                                                      |
+| `XWIN_MSVC_SYSROOT`          | `--msvc-sysroot`               | Use an existing windows-msvc-sysroot directory (clang backend only), skipping the sysroot download                  |
 | `XWIN_INCLUDE_DEBUG_LIBS`    | `--xwin-include-debug-libs`    | Whether or not to include debug libs in installation (default false).                                              |
 | `XWIN_INCLUDE_DEBUG_SYMBOLS` | `--xwin-include-debug-symbols` | Whether or not to include debug symbols (PDBs) in installation (default false).                                    |
 | `XWIN_HTTP_RETRIES`          | `--xwin-http-retries`          | Number of times to retry HTTP requests when downloading (default 3).                                               |
+
+To reuse an existing [windows-msvc-sysroot](https://github.com/trcrsired/windows-msvc-sysroot)
+checkout or extracted release, point to the directory containing `include` and `lib`:
+
+```bash
+cargo xwin build --cross-compiler clang --msvc-sysroot /path/to/windows-msvc-sysroot --target x86_64-pc-windows-msvc
+```
+
+Alternatively, set `XWIN_MSVC_SYSROOT` to that path. The directory is used directly
+without being modified and does not need a `DONE` marker. An invalid path produces
+an error instead of falling back to a download. Without this option, cargo-xwin
+continues to download and reuse the cached sysroot. Generated toolchain files remain
+in the cache directory. The `cache windows-msvc-sysroot` command still populates the
+managed cache independently of this option.
 
 ### CMake Support
 

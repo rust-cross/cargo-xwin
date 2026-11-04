@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, ensure};
 use fs_err as fs;
 use path_slash::PathExt;
 use serde::Deserialize;
@@ -20,11 +20,13 @@ const MSVC_SYSROOT_ASSET_NAME: &str = "windows-msvc-sysroot.tar.xz";
 const FALLBACK_DOWNLOAD_URL: &str = "https://github.com/trcrsired/windows-msvc-sysroot/releases/download/2026-01-16/windows-msvc-sysroot.tar.xz";
 
 #[derive(Debug)]
-pub struct Clang;
+pub struct Clang<'a> {
+    msvc_sysroot: Option<&'a Path>,
+}
 
-impl Clang {
-    pub fn new() -> Self {
-        Clang
+impl<'a> Clang<'a> {
+    pub fn new(msvc_sysroot: Option<&'a Path>) -> Self {
+        Self { msvc_sysroot }
     }
 
     pub fn apply_command_env(
@@ -141,7 +143,10 @@ impl Clang {
         Ok(())
     }
 
-    /// Download and unpack the latest MSVC sysroot from GitHub Releases.
+    /// Use an existing MSVC sysroot, or download and unpack one from GitHub Releases.
+    ///
+    /// An explicitly supplied sysroot must contain `include` and `lib` directories.
+    /// It is used directly without modifying it or requiring a `DONE` marker.
     ///
     /// If the sysroot is already downloaded and unpacked, it will be reused.
     /// The sysroot will be stored in `<cache_dir>/windows-msvc-sysroot`.
@@ -151,6 +156,19 @@ impl Clang {
     /// The environment variable `XWIN_MSVC_SYSROOT_DOWNLOAD_URL` can be used
     /// to override the download URL.
     pub fn setup_msvc_sysroot(&self, cache_dir: PathBuf) -> Result<PathBuf> {
+        if let Some(path) = self.msvc_sysroot {
+            let path = fs::canonicalize(path)
+                .with_context(|| format!("Failed to resolve MSVC sysroot: {}", path.display()))?;
+            for directory in ["include", "lib"] {
+                ensure!(
+                    path.join(directory).is_dir(),
+                    "Invalid MSVC sysroot {}: missing {directory} directory",
+                    path.display()
+                );
+            }
+            return Ok(path);
+        }
+
         let msvc_sysroot_dir = cache_dir.join(MSVC_SYSROOT_DIR);
         let done_mark_file = msvc_sysroot_dir.join("DONE");
         if msvc_sysroot_dir.is_dir() {
@@ -374,4 +392,93 @@ struct GitHubRelease {
 struct GitHubReleaseAsset {
     browser_download_url: String,
     name: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn existing_sysroot_is_used_without_modifying_it_or_the_cache() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let sysroot = temp.path().join("sysroot");
+        fs::create_dir_all(sysroot.join("include"))?;
+        fs::create_dir_all(sysroot.join("lib"))?;
+        fs::write(sysroot.join("keep"), "user-owned")?;
+        let cache = temp.path().join("cache");
+        let cached_sysroot = cache.join(MSVC_SYSROOT_DIR);
+        fs::create_dir_all(&cached_sysroot)?;
+        fs::write(cached_sysroot.join("keep"), "cached")?;
+
+        let result = Clang::new(Some(&sysroot)).setup_msvc_sysroot(cache)?;
+
+        assert_eq!(result, sysroot.canonicalize()?);
+        assert!(!sysroot.join("DONE").exists());
+        assert_eq!(fs::read_to_string(sysroot.join("keep"))?, "user-owned");
+        assert_eq!(fs::read_dir(&sysroot)?.count(), 3);
+        assert_eq!(fs::read_to_string(cached_sysroot.join("keep"))?, "cached");
+        assert_eq!(fs::read_dir(cached_sysroot)?.count(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_explicit_sysroot_does_not_fall_back_to_cache() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let cache = temp.path().join("cache");
+        let cached_sysroot = cache.join(MSVC_SYSROOT_DIR);
+        fs::create_dir_all(&cached_sysroot)?;
+        fs::write(cached_sysroot.join("DONE"), "cached")?;
+
+        let sysroot = temp.path().join("sysroot");
+        let error = Clang::new(Some(&sysroot))
+            .setup_msvc_sysroot(cache.clone())
+            .unwrap_err();
+        assert!(error.to_string().contains("Failed to resolve MSVC sysroot"));
+        assert!(!sysroot.exists());
+
+        fs::write(&sysroot, "not a directory")?;
+        let error = Clang::new(Some(&sysroot))
+            .setup_msvc_sysroot(cache.clone())
+            .unwrap_err();
+        assert!(error.to_string().contains("missing include directory"));
+        assert_eq!(fs::read_to_string(&sysroot)?, "not a directory");
+        fs::remove_file(&sysroot)?;
+
+        fs::create_dir_all(&sysroot)?;
+        for directory in ["include", "lib"] {
+            let error = Clang::new(Some(&sysroot))
+                .setup_msvc_sysroot(cache.clone())
+                .unwrap_err();
+            assert!(
+                error
+                    .to_string()
+                    .contains(&format!("missing {directory} directory"))
+            );
+            fs::create_dir(sysroot.join(directory))?;
+        }
+        assert_eq!(fs::read_to_string(cached_sysroot.join("DONE"))?, "cached");
+        assert!(!sysroot.join("DONE").exists());
+        Ok(())
+    }
+
+    #[test]
+    fn managed_sysroot_is_reused_without_an_explicit_path() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let cached_sysroot = temp.path().join(MSVC_SYSROOT_DIR);
+        fs::create_dir_all(&cached_sysroot)?;
+        fs::write(cached_sysroot.join("DONE"), "cached")?;
+
+        let clang = Clang::new(None);
+        assert_eq!(
+            clang.setup_msvc_sysroot(temp.path().to_path_buf())?,
+            cached_sysroot
+        );
+        let nested_sysroot = cached_sysroot.join(MSVC_SYSROOT_DIR);
+        fs::create_dir(&nested_sysroot)?;
+        assert_eq!(
+            clang.setup_msvc_sysroot(temp.path().to_path_buf())?,
+            nested_sysroot
+        );
+        Ok(())
+    }
 }
