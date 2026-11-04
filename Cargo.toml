@@ -1,6 +1,6 @@
 [package]
 name = "cargo-xwin"
-version = "0.23.1"
+version = "0.24.0"
 edition = "2024"
 description = "Cross compile Cargo project to Windows MSVC target with ease"
 license = "MIT"
@@ -23,7 +23,7 @@ clap = { version = "4.3.0", features = [
     "wrap_help",
     "unstable-styles",
 ] }
-dirs = "6.0.0"
+dirs = "7.0.0"
 fs-err = "3.0.0"
 humantime = "2.1.0"
 indicatif = "0.18.3"
