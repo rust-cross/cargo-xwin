@@ -94,7 +94,7 @@ impl CacheWindowsMsvcSysroot {
         println!("📦 Pre-caching windows-msvc-sysroot...");
         println!("📁 Cache directory: {}", cache_dir.display());
 
-        let clang = Clang::new();
+        let clang = Clang::new(None);
         let sysroot_dir = clang.setup_msvc_sysroot(cache_dir)?;
 
         println!("✅ windows-msvc-sysroot cache setup completed successfully!");

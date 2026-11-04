@@ -30,6 +30,10 @@ pub struct XWinOptions {
     #[arg(long, env = "XWIN_CACHE_DIR", hide = true)]
     pub xwin_cache_dir: Option<PathBuf>,
 
+    /// Use an existing windows-msvc-sysroot directory (clang backend only)
+    #[arg(long, env = "XWIN_MSVC_SYSROOT")]
+    pub msvc_sysroot: Option<PathBuf>,
+
     /// The architectures to include in CRT/SDK
     #[arg(
         long,
@@ -88,6 +92,7 @@ impl Default for XWinOptions {
     fn default() -> Self {
         Self {
             xwin_cache_dir: None,
+            msvc_sysroot: None,
             xwin_arch: vec![xwin::Arch::X86_64, xwin::Arch::Aarch64],
             xwin_variant: vec![xwin::Variant::Desktop],
             xwin_version: 17,
@@ -157,7 +162,7 @@ impl XWinOptions {
                 clang_cl.apply_command_env(manifest_path, cargo, cache_dir, cmd)?;
             }
             CrossCompiler::Clang => {
-                let clang = crate::compiler::clang::Clang::new();
+                let clang = crate::compiler::clang::Clang::new(self.msvc_sysroot.as_deref());
                 clang.apply_command_env(manifest_path, cargo, cache_dir, cmd)?;
             }
         }
