@@ -15,9 +15,8 @@ use xwin::util::ProgressTarget;
 
 use crate::cache::prepare_xwin_cache_dir;
 use crate::compiler::common::{
-    adjust_canonicalization, default_build_target_from_config, http_agent, is_static_crt_enabled,
-    resolve_target_info, setup_cmake_env, setup_env_path, setup_llvm_tools,
-    setup_target_compiler_and_linker_env,
+    adjust_canonicalization, default_build_target_from_config, http_agent, resolve_target_info,
+    setup_cmake_env, setup_env_path, setup_llvm_tools, setup_target_compiler_and_linker_env,
 };
 use crate::compiler::rustflags::CargoRustFlags;
 use crate::options::XWinOptions;
@@ -149,20 +148,6 @@ impl<'a> ClangCl<'a> {
                     .flags
                     .extend(["-C".to_string(), "linker-flavor=lld-link".to_string()]);
 
-                // Check if static CRT is enabled
-                let is_static_crt = is_static_crt_enabled(&workdir, &cargo_target_name)?;
-                if is_static_crt {
-                    // When using static CRT, we need to link against the static version of libucrt
-                    // instead of the import library. This resolves issues with symbols like
-                    // __stdio_common_vsscanf being marked as dllimport.
-                    rustflags.flags.extend([
-                        "-C".to_string(),
-                        "link-arg=-nodefaultlib:ucrt".to_string(),
-                        "-C".to_string(),
-                        "link-arg=-defaultlib:libucrt".to_string(),
-                    ]);
-                }
-
                 rustflags.flags.push(format!(
                     "-Lnative={dir}/crt/lib/{arch}",
                     dir = xwin_dir,
@@ -178,6 +163,7 @@ impl<'a> ClangCl<'a> {
                     dir = xwin_dir,
                     arch = xwin_arch
                 ));
+                let is_static_crt = rustflags.is_static_crt;
                 rustflags.apply(cmd)?;
                 cmd.env("PATH", &env_path);
 
