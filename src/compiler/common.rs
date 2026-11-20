@@ -233,16 +233,20 @@ pub fn get_rustflags(workdir: &Path, target: &str) -> Result<Option<cargo_config
     Ok(rustflags)
 }
 
-/// Checks if the target features include `+crt-static` for static CRT linkage.
-///
-/// This function examines RUSTFLAGS from various sources to determine if the
-/// `+crt-static` target feature is enabled, which affects how we link against
-/// the MSVC C runtime library.
-pub fn is_static_crt_enabled(workdir: &Path, target: &str) -> Result<bool> {
+#[derive(Debug, PartialEq, Eq)]
+pub enum CrtLinkage {
+    Dynamic,
+    Static,
+    /// Static VC runtime with the system UCRT.
+    Hybrid,
+}
+
+pub fn crt_linkage(workdir: &Path, target: &str) -> Result<CrtLinkage> {
     // Check RUSTFLAGS environment variable first
     if let Ok(rustflags) = env::var("RUSTFLAGS") {
         if rustflags.contains("+crt-static") {
-            return Ok(true);
+            let flags = cargo_config2::Flags::from_space_separated(&rustflags);
+            return Ok(static_linkage(&flags.flags));
         }
     }
 
@@ -250,12 +254,45 @@ pub fn is_static_crt_enabled(workdir: &Path, target: &str) -> Result<bool> {
     if let Some(flags) = get_rustflags(workdir, target)? {
         for flag in &flags.flags {
             if flag.contains("+crt-static") {
-                return Ok(true);
+                return Ok(static_linkage(&flags.flags));
             }
         }
     }
 
-    Ok(false)
+    Ok(CrtLinkage::Dynamic)
+}
+
+fn static_linkage(flags: &[String]) -> CrtLinkage {
+    let hybrid = flags.iter().any(|flag| {
+        // With a separate -C or --codegen, the option is its own argument.
+        let option = flag
+            .strip_prefix("-C")
+            .or_else(|| flag.strip_prefix("--codegen="))
+            .unwrap_or(flag);
+        match option.split_once('=') {
+            Some(("link-arg" | "link_arg", arg)) => selects_dynamic_ucrt(arg),
+            Some(("link-args" | "link_args", args)) => {
+                args.split_whitespace().any(selects_dynamic_ucrt)
+            }
+            _ => false,
+        }
+    });
+    if hybrid {
+        CrtLinkage::Hybrid
+    } else {
+        CrtLinkage::Static
+    }
+}
+
+fn selects_dynamic_ucrt(arg: &str) -> bool {
+    let Some(arg) = arg.strip_prefix(['/', '-']) else {
+        return false;
+    };
+    let arg = arg.to_ascii_lowercase();
+    matches!(
+        arg.strip_suffix(".lib").unwrap_or(&arg),
+        "defaultlib:ucrt" | "nodefaultlib:libucrt"
+    )
 }
 
 pub fn http_agent() -> Result<ureq::Agent> {
@@ -300,24 +337,22 @@ mod tests {
     use std::env;
 
     #[test]
-    fn test_is_static_crt_enabled_env_var() {
+    fn test_crt_linkage_env_var() {
         // Test with RUSTFLAGS environment variable containing +crt-static
         unsafe {
             env::set_var("RUSTFLAGS", "-C target-feature=+crt-static");
         }
 
-        let result = is_static_crt_enabled(Path::new("."), "x86_64-pc-windows-msvc");
-        assert!(result.is_ok());
-        assert!(result.unwrap());
+        let result = crt_linkage(Path::new("."), "x86_64-pc-windows-msvc");
+        assert_eq!(result.unwrap(), CrtLinkage::Static);
 
         // Test with RUSTFLAGS not containing +crt-static
         unsafe {
             env::set_var("RUSTFLAGS", "-C opt-level=3");
         }
 
-        let result = is_static_crt_enabled(Path::new("."), "x86_64-pc-windows-msvc");
-        assert!(result.is_ok());
-        assert!(!result.unwrap());
+        let result = crt_linkage(Path::new("."), "x86_64-pc-windows-msvc");
+        assert_eq!(result.unwrap(), CrtLinkage::Dynamic);
 
         // Clean up
         unsafe {
@@ -326,19 +361,18 @@ mod tests {
     }
 
     #[test]
-    fn test_is_static_crt_enabled_no_flags() {
+    fn test_crt_linkage_no_flags() {
         // Test with no RUSTFLAGS
         unsafe {
             env::remove_var("RUSTFLAGS");
         }
 
-        let result = is_static_crt_enabled(Path::new("."), "x86_64-pc-windows-msvc");
-        assert!(result.is_ok());
-        assert!(!result.unwrap());
+        let result = crt_linkage(Path::new("."), "x86_64-pc-windows-msvc");
+        assert_eq!(result.unwrap(), CrtLinkage::Dynamic);
     }
 
     #[test]
-    fn test_is_static_crt_enabled_config_file() {
+    fn test_crt_linkage_config_file() {
         // Test with a temporary config file containing +crt-static
         let test_dir = std::env::temp_dir().join("test_cargo_config");
         std::fs::create_dir_all(&test_dir).unwrap();
@@ -352,9 +386,19 @@ rustflags = ["-C", "target-feature=+crt-static"]"#;
             env::remove_var("RUSTFLAGS");
         }
 
-        let result = is_static_crt_enabled(&test_dir, "x86_64-pc-windows-msvc");
-        assert!(result.is_ok());
-        assert!(result.unwrap());
+        let result = crt_linkage(&test_dir, "x86_64-pc-windows-msvc");
+        assert_eq!(result.unwrap(), CrtLinkage::Static);
+
+        let hybrid = r#"
+[target.'cfg(windows)']
+rustflags = ["-C", "link-args=/NODEFAULTLIB:libucrt.lib", "-C", "link-args=/DEFAULTLIB:ucrt.lib"]"#;
+        std::fs::write(
+            test_dir.join(".cargo/config.toml"),
+            format!("{config_content}{hybrid}"),
+        )
+        .unwrap();
+        let result = crt_linkage(&test_dir, "x86_64-pc-windows-msvc");
+        assert_eq!(result.unwrap(), CrtLinkage::Hybrid);
 
         // Clean up
         std::fs::remove_dir_all(&test_dir).unwrap();
