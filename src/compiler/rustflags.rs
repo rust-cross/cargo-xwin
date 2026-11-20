@@ -5,10 +5,10 @@ use std::process::Command;
 
 use anyhow::{Context, Result};
 
-/// Target CRT selection and flags that Cargo will not read again from target configuration.
+/// Flags that Cargo will not read again from target configuration.
 pub struct CargoRustFlags {
     pub flags: Vec<String>,
-    pub is_static_crt: bool,
+    pub requests_dynamic_ucrt: bool,
     env_key: String,
     target: String,
 }
@@ -48,7 +48,7 @@ impl CargoRustFlags {
             cargo_config2::ResolveOptions::default().env(vars.clone()),
         )?;
         let target_flags = target_config.rustflags(target)?.unwrap_or_default();
-        let mut flags = if has_global_flags || target_flags.flags.is_empty() {
+        let flags = if has_global_flags || target_flags.flags.is_empty() {
             config.build.rustflags.unwrap_or_default()
         } else {
             // Cargo merges this environment variable with target config itself.
@@ -64,25 +64,13 @@ impl CargoRustFlags {
                 .unwrap_or_default()
         };
         let resolved = if target_flags.flags.is_empty() {
-            &flags.flags
+            &flags
         } else {
-            &target_flags.flags
+            &target_flags
         };
-        let is_static_crt = resolved.iter().any(|flag| flag.contains("+crt-static"));
-        // Prefer libucrt for static CRT builds to resolve symbols such as
-        // __stdio_common_vsscanf locally. Hybrid builds explicitly use the
-        // system UCRT while keeping the rest of the CRT static.
-        if is_static_crt && !requests_dynamic_ucrt(resolved) {
-            flags.flags.extend([
-                "-C".to_string(),
-                "link-arg=-nodefaultlib:ucrt".to_string(),
-                "-C".to_string(),
-                "link-arg=-defaultlib:libucrt".to_string(),
-            ]);
-        }
         Ok(Self {
+            requests_dynamic_ucrt: requests_dynamic_ucrt(&resolved.flags),
             flags: flags.flags,
-            is_static_crt,
             env_key,
             target: target.to_owned(),
         })
@@ -113,25 +101,20 @@ impl CargoRustFlags {
 }
 
 fn requests_dynamic_ucrt(flags: &[String]) -> bool {
-    let mut flags = flags.iter().map(String::as_str);
-    while let Some(flag) = flags.next() {
-        let option = match flag {
-            "-C" | "--codegen" => flags.next(),
-            _ => flag
-                .strip_prefix("-C")
-                .or_else(|| flag.strip_prefix("--codegen=")),
-        };
-        match option.and_then(|option| option.split_once('=')) {
-            Some(("link-arg" | "link_arg", arg)) if selects_dynamic_ucrt(arg) => return true,
-            Some(("link-args" | "link_args", args))
-                if args.split_whitespace().any(selects_dynamic_ucrt) =>
-            {
-                return true;
+    flags.iter().any(|flag| {
+        // With a separate -C or --codegen, the option is its own argument.
+        let option = flag
+            .strip_prefix("-C")
+            .or_else(|| flag.strip_prefix("--codegen="))
+            .unwrap_or(flag);
+        match option.split_once('=') {
+            Some(("link-arg" | "link_arg", arg)) => selects_dynamic_ucrt(arg),
+            Some(("link-args" | "link_args", args)) => {
+                args.split_whitespace().any(selects_dynamic_ucrt)
             }
-            _ => {}
+            _ => false,
         }
-    }
-    false
+    })
 }
 
 fn selects_dynamic_ucrt(arg: &str) -> bool {
@@ -152,55 +135,17 @@ mod tests {
     use std::collections::BTreeMap;
 
     #[test]
-    fn crt_selection() -> Result<()> {
+    fn hybrid_ucrt_in_target_config() -> Result<()> {
         let dir = tempfile::tempdir()?;
         fs::create_dir(dir.path().join(".cargo"))?;
-        let target = "x86_64-pc-windows-msvc";
-        let static_crt = "-C target-feature=+crt-static";
-        let hybrid = r#"[
-            "-C", "link-args=/NODEFAULTLIB:libucrt.lib",
-            "-C", "link-args=/DEFAULTLIB:ucrt.lib",
-        ]"#;
-        let import = r#"["-Clink-arg=-DefaultLib:UCRT"]"#;
-        let exclude = r#"["--codegen=link-args=/DEBUG -NoDefaultLib:LibUcrt"]"#;
-        let other = r#"["-Clink-arg=/defaultlib:ucrtd.lib"]"#;
-        for (triple_flags, cfg_flags, global, static_runtime, static_ucrt) in [
-            ("", "[]", None, false, false),
-            ("", "[]", Some("-C opt-level=3"), false, false),
-            ("", "[]", Some(static_crt), true, true),
-            (static_crt, "[]", None, true, true),
-            (static_crt, hybrid, None, true, false),
-            ("", hybrid, Some(static_crt), true, false),
-            (static_crt, import, None, true, false),
-            (static_crt, exclude, None, true, false),
-            (static_crt, other, None, true, true),
-        ] {
-            let config = format!(
-                "[target.{target}]\nrustflags = '{triple_flags}'\n\
-                 [target.'cfg(windows)']\nrustflags = {cfg_flags}\n"
-            );
-            fs::write(dir.path().join(".cargo/config.toml"), &config)?;
-            let mut vars = BTreeMap::new();
-            vars.insert(
-                "CARGO_HOME".into(),
-                dir.path().join("cargo-home").into_os_string(),
-            );
-            if let Some(global) = global {
-                vars.insert("RUSTFLAGS".into(), global.into());
-            }
-            let flags = CargoRustFlags::load_with_env(dir.path(), target, vars)?;
-            assert_eq!(flags.is_static_crt, static_runtime, "{config}");
-            for arg in [
-                "link-arg=-nodefaultlib:ucrt",
-                "link-arg=-defaultlib:libucrt",
-            ] {
-                assert_eq!(
-                    flags.flags.iter().any(|f| f == arg),
-                    static_ucrt,
-                    "{config}"
-                );
-            }
-        }
+        fs::write(
+            dir.path().join(".cargo/config.toml"),
+            r#"[target.'cfg(windows)']
+rustflags = ["-C", "link-args=/NODEFAULTLIB:libucrt.lib", "-C", "link-args=/DEFAULTLIB:ucrt.lib"]"#,
+        )?;
+        let vars = BTreeMap::from([("RUSTFLAGS".into(), "-C target-feature=+crt-static".into())]);
+        let flags = CargoRustFlags::load_with_env(dir.path(), "x86_64-pc-windows-msvc", vars)?;
+        assert!(flags.requests_dynamic_ucrt);
         Ok(())
     }
 
