@@ -9,7 +9,7 @@ use path_slash::PathExt;
 use serde::Deserialize;
 
 use crate::compiler::common::{
-    adjust_canonicalization, default_build_target_from_config, http_agent, is_static_crt_enabled,
+    CrtLinkage, adjust_canonicalization, crt_linkage, default_build_target_from_config, http_agent,
     setup_cmake_env, setup_env_path, setup_llvm_tools, setup_target_compiler_and_linker_env,
 };
 use crate::compiler::rustflags::CargoRustFlags;
@@ -113,8 +113,8 @@ impl<'a> Clang<'a> {
                 ]);
 
                 // Check if static CRT is enabled
-                let is_static_crt = is_static_crt_enabled(&workdir, &cargo_target_name)?;
-                if is_static_crt {
+                let crt = crt_linkage(&workdir, &cargo_target_name)?;
+                if crt == CrtLinkage::Static {
                     // When using static CRT, we need to link against the static version of libucrt
                     // instead of the import library. This resolves issues with symbols like
                     // __stdio_common_vsscanf being marked as dllimport.
@@ -134,6 +134,7 @@ impl<'a> Clang<'a> {
                 cmd.env("PATH", &env_path);
 
                 // CMake support
+                let is_static_crt = crt != CrtLinkage::Dynamic;
                 let cmake_toolchain = self
                     .setup_cmake_toolchain(&llvm_target, &sysroot_dir, &cache_dir, is_static_crt)
                     .with_context(|| format!("Failed to setup CMake toolchain for {}", target))?;
