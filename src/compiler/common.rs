@@ -93,14 +93,18 @@ pub fn setup_env_path(cache_dir: &Path) -> Result<OsString> {
 ///
 /// This function creates symlinks for the following tools:
 /// - `rust-lld` to `lld-link`
+/// - `llvm-ar` to `llvm-ar`
 /// - `llvm-ar` to `llvm-lib`
 /// - `llvm-ar` to `llvm-dlltool`
+/// - `llvm-ar` to `llvm-ranlib`
 ///
 /// These symlinks are established if they do not already exist in the specified environment path.
 pub fn setup_llvm_tools(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
     symlink_llvm_tool("rust-lld", "lld-link", env_path, cache_dir)?;
+    symlink_llvm_tool("llvm-ar", "llvm-ar", env_path, cache_dir)?;
     symlink_llvm_tool("llvm-ar", "llvm-lib", env_path, cache_dir)?;
     symlink_llvm_tool("llvm-ar", "llvm-dlltool", env_path, cache_dir)?;
+    symlink_llvm_tool("llvm-ar", "llvm-ranlib", env_path, cache_dir)?;
     Ok(())
 }
 
@@ -111,19 +115,38 @@ pub fn setup_llvm_tools(env_path: &OsStr, cache_dir: &Path) -> Result<()> {
 /// It sets up the following environment variables:
 /// - `TARGET_CC` and `TARGET_CXX` with the provided compiler.
 /// - `CC_<env_target>` and `CXX_<env_target>` with the provided compiler.
-/// - `TARGET_AR` and `AR_<env_target>` with "llvm-lib".
+/// - `TARGET_AR` and `AR_<env_target>` with "llvm-ar".
+/// - `TARGET_RANLIB` and `RANLIB_<env_target>` with "llvm-ranlib".
 /// - `CARGO_TARGET_<env_target>_LINKER` with "lld-link".
+///
+/// `llvm-ar` is used instead of `llvm-lib` so that build systems which expect an
+/// `ar` compatible archiver (e.g. OpenSSL's `Configure`/`make`) work as well.
+/// The `cc` crate (>= 1.1.0) recognizes `llvm-ar` and invokes it with `ar` style
+/// arguments for MSVC targets. Older `cc` versions always pass `lib.exe` style
+/// arguments and need `AR_<env_target>=llvm-lib`.
+///
+/// The archiver and ranlib variables are only set if the user has not already
+/// provided them, so they can be overridden.
 pub fn setup_target_compiler_and_linker_env(cmd: &mut Command, env_target: &str, compiler: &str) {
     cmd.env("TARGET_CC", compiler);
     cmd.env("TARGET_CXX", compiler);
     cmd.env(format!("CC_{}", env_target), compiler);
     cmd.env(format!("CXX_{}", env_target), compiler);
-    cmd.env("TARGET_AR", "llvm-lib");
-    cmd.env(format!("AR_{}", env_target), "llvm-lib");
+    set_env_if_unset(cmd, "TARGET_AR", "llvm-ar");
+    set_env_if_unset(cmd, &format!("AR_{}", env_target), "llvm-ar");
+    set_env_if_unset(cmd, "TARGET_RANLIB", "llvm-ranlib");
+    set_env_if_unset(cmd, &format!("RANLIB_{}", env_target), "llvm-ranlib");
     cmd.env(
         format!("CARGO_TARGET_{}_LINKER", env_target.to_uppercase()),
         "lld-link",
     );
+}
+
+/// Sets `key` to `value` on `cmd` unless it is already set in the current environment.
+fn set_env_if_unset(cmd: &mut Command, key: &str, value: &str) {
+    if env::var_os(key).is_none() {
+        cmd.env(key, value);
+    }
 }
 
 /// Configures the environment variables for CMake to use the Ninja generator and Windows system.
